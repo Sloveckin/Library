@@ -16,9 +16,8 @@ type getRequest struct {
 
 type getResponse struct {
 	v.Response
-	Id      string `json:"id" validate:"required"`
-	Name    string `json:"name" validate:"required"`
-	Surname string `json:"surname" validate:"required"`
+	Id   string `json:"id" validate:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 type getService interface {
