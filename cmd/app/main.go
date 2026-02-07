@@ -15,11 +15,11 @@ import (
 )
 
 func main() {
-	bookRepo := book2.NewRepositoryInMemory()
-	bookService := servicebook.NewServiceBook(bookRepo)
-
 	authorRepo := author2.NewAuthorRepositoryInMemory()
 	authorService := serviceauthor.NewAuthorServiceImpl(authorRepo)
+
+	bookRepo := book2.NewRepositoryInMemory()
+	bookService := servicebook.NewServiceBook(bookRepo, authorService)
 
 	r := chi.NewRouter()
 

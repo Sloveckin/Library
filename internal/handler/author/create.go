@@ -12,12 +12,11 @@ import (
 )
 
 type createService interface {
-	Create(name, surname string) (*model.Author, error)
+	Create(name string) (*model.Author, error)
 }
 
 type createRequest struct {
-	Name    string `json:"name" validate:"required"`
-	Surname string `json:"surname" validate:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 type createResponse struct {
@@ -44,9 +43,7 @@ func Create(service createService) http.HandlerFunc {
 		}
 
 		name := strings.TrimSpace(req.Name)
-		surname := strings.TrimSpace(req.Surname)
-
-		book, err := service.Create(name, surname)
+		book, err := service.Create(name)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))

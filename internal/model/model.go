@@ -7,7 +7,6 @@ type Book struct {
 }
 
 type Author struct {
-	Id      string
-	Name    string
-	Surname string
+	Id   string
+	Name string
 }

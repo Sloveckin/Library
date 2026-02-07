@@ -24,11 +24,10 @@ func NewAuthorRepositoryInMemory() *RepositoryInMemory {
 	}
 }
 
-func (s *RepositoryInMemory) Create(name, surname string) (*model.Author, error) {
+func (s *RepositoryInMemory) Create(name string) (*model.Author, error) {
 	author := &model.Author{
-		Id:      uuid.NewString(),
-		Name:    name,
-		Surname: surname,
+		Id:   uuid.NewString(),
+		Name: name,
 	}
 
 	s.rw.RLock()

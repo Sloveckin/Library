@@ -8,6 +8,7 @@ import (
 var (
 	BookAlreadyExists = errors.New("book already exists")
 	BookNotFound      = errors.New("book not found")
+	AuthorNotFound    = errors.New("author not found")
 )
 
 type Repository interface {
@@ -18,13 +19,19 @@ type Repository interface {
 	ExistsByName(name string) (bool, error)
 }
 
-type ServiceBookImpl struct {
-	repository Repository
+type AuthorService interface {
+	ExistsByName(name string) (bool, error)
 }
 
-func NewServiceBook(repository Repository) *ServiceBookImpl {
+type ServiceBookImpl struct {
+	repository    Repository
+	authorService AuthorService
+}
+
+func NewServiceBook(repository Repository, service AuthorService) *ServiceBookImpl {
 	return &ServiceBookImpl{
-		repository: repository,
+		repository:    repository,
+		authorService: service,
 	}
 }
 
@@ -36,6 +43,17 @@ func (s *ServiceBookImpl) Create(name string, authors ...model.Author) (*model.B
 
 	if exist {
 		return nil, BookAlreadyExists
+	}
+
+	for _, author := range authors {
+		ok, err := s.authorService.ExistsByName(author.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, AuthorNotFound
+		}
 	}
 
 	book, err := s.repository.Create(name, authors...)

@@ -55,7 +55,6 @@ func Get(service getService) http.HandlerFunc {
 			Response: v.Ok(),
 			Id:       author.Id,
 			Name:     author.Name,
-			Surname:  author.Surname,
 		})
 	}
 }
