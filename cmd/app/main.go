@@ -1,8 +1,11 @@
 package main
 
 import (
+	"Library/internal/handler/author"
 	"Library/internal/handler/book"
+	author2 "Library/internal/repo/author/memory"
 	book2 "Library/internal/repo/book/memory"
+	serviceauthor "Library/internal/service/author"
 	servicebook "Library/internal/service/book"
 	"net/http"
 	"os"
@@ -12,17 +15,26 @@ import (
 )
 
 func main() {
-	repo := book2.NewRepositoryInMemory()
-	bookService := servicebook.NewServiceBook(repo)
+	bookRepo := book2.NewRepositoryInMemory()
+	bookService := servicebook.NewServiceBook(bookRepo)
+
+	authorRepo := author2.NewAuthorRepositoryInMemory()
+	authorService := serviceauthor.NewAuthorServiceImpl(authorRepo)
 
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 
-	r.Put("/create", book.Create(bookService))
-	r.Get("/get", book.Get(bookService))
-	r.Delete("/delete", book.Delete(bookService))
+	r.Route("/book", func(r chi.Router) {
+		r.Put("/create", book.Create(bookService))
+		r.Get("/get", book.Get(bookService))
+		r.Delete("/delete", book.Delete(bookService))
+	})
+
+	r.Route("/author", func(r chi.Router) {
+		r.Put("/create", author.Create(authorService))
+	})
 
 	server := &http.Server{
 		Addr:    "localhost:8080",

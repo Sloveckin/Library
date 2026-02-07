@@ -24,10 +24,11 @@ func NewAuthorRepositoryInMemory() *RepositoryInMemory {
 	}
 }
 
-func (s *RepositoryInMemory) Create(name string) (*model.Author, error) {
+func (s *RepositoryInMemory) Create(name, surname string) (*model.Author, error) {
 	author := &model.Author{
-		Id:   uuid.NewString(),
-		Name: name,
+		Id:      uuid.NewString(),
+		Name:    name,
+		Surname: surname,
 	}
 
 	s.rw.RLock()
@@ -63,7 +64,7 @@ func (s *RepositoryInMemory) Delete(id string) error {
 	return nil
 }
 
-func (s *RepositoryInMemory) ExistById(id string) (bool, error) {
+func (s *RepositoryInMemory) ExistsById(id string) (bool, error) {
 	s.rw.RLock()
 	defer s.rw.RUnlock()
 
@@ -72,7 +73,7 @@ func (s *RepositoryInMemory) ExistById(id string) (bool, error) {
 	return ok, nil
 }
 
-func (s *RepositoryInMemory) ExistByName(name string) (bool, error) {
+func (s *RepositoryInMemory) ExistsByName(name string) (bool, error) {
 	s.rw.RLock()
 	defer s.rw.RUnlock()
 

@@ -11,8 +11,8 @@ var (
 )
 
 type AuthorRepository interface {
-	Create(name string) (*model.Author, error)
-	Get(id string) (string, error)
+	Create(name, surname string) (*model.Author, error)
+	Get(id string) (*model.Author, error)
 	Delete(id string) error
 	ExistsById(id string) (bool, error)
 	ExistsByName(name string) (bool, error)
@@ -22,11 +22,13 @@ type AuthorServiceImpl struct {
 	authorRepository AuthorRepository
 }
 
-func NewAuthorServiceImpl() *AuthorServiceImpl {
-	return &AuthorServiceImpl{}
+func NewAuthorServiceImpl(repo AuthorRepository) *AuthorServiceImpl {
+	return &AuthorServiceImpl{
+		authorRepository: repo,
+	}
 }
 
-func (s *AuthorServiceImpl) Create(name string) (*model.Author, error) {
+func (s *AuthorServiceImpl) Create(name, surname string) (*model.Author, error) {
 	exist, err := s.ExistsByName(name)
 	if err != nil {
 		return nil, err
@@ -36,7 +38,7 @@ func (s *AuthorServiceImpl) Create(name string) (*model.Author, error) {
 		return nil, AuthorExists
 	}
 
-	author, err := s.authorRepository.Create(name)
+	author, err := s.authorRepository.Create(name, surname)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,7 @@ func (s *AuthorServiceImpl) Create(name string) (*model.Author, error) {
 	return author, nil
 }
 
-func (s *AuthorServiceImpl) Get(id string) (string, error) {
+func (s *AuthorServiceImpl) Get(id string) (*model.Author, error) {
 	return s.authorRepository.Get(id)
 }
 
