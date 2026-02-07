@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Library/internal/config"
 	"Library/internal/handler/author"
 	"Library/internal/handler/book"
 	author2 "Library/internal/repo/author/memory"
@@ -15,6 +16,8 @@ import (
 )
 
 func main() {
+	cnf := config.MustLoad()
+
 	authorRepo := author2.NewAuthorRepositoryInMemory()
 	authorService := serviceauthor.NewAuthorServiceImpl(authorRepo)
 
@@ -39,8 +42,10 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:    "localhost:8080",
-		Handler: r,
+		Addr:        cnf.HttpServer.Address,
+		ReadTimeout: cnf.HttpServer.Timeout,
+		IdleTimeout: cnf.HttpServer.IdleTimeout,
+		Handler:     r,
 	}
 
 	if err := server.ListenAndServe(); err != nil {
