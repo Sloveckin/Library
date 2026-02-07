@@ -34,6 +34,7 @@ func main() {
 
 	r.Route("/author", func(r chi.Router) {
 		r.Put("/create", author.Create(authorService))
+		r.Get("/get", author.Get(authorService))
 	})
 
 	server := &http.Server{
