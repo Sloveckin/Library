@@ -2,7 +2,6 @@ package service_book
 
 import (
 	"Library/internal/model"
-	"Library/internal/repo/InMemory"
 	"errors"
 )
 
@@ -13,8 +12,10 @@ var (
 
 type Repository interface {
 	Create(name string, authors ...model.Author) (*model.Book, error)
-	Get(name string) (*model.Book, error)
-	Delete(name string) error
+	Get(id string) (*model.Book, error)
+	Delete(id string) error
+	ExistsById(id string) (bool, error)
+	ExistsByName(name string) (bool, error)
 }
 
 type ServiceBookImpl struct {
@@ -49,8 +50,8 @@ func (s *ServiceBookImpl) Get(name string) (*model.Book, error) {
 	return s.repository.Get(name)
 }
 
-func (s *ServiceBookImpl) Delete(name string) error {
-	exists, err := s.ExistByName(name)
+func (s *ServiceBookImpl) Delete(id string) error {
+	exists, err := s.ExistsById(id)
 	if err != nil {
 		return err
 	}
@@ -59,18 +60,13 @@ func (s *ServiceBookImpl) Delete(name string) error {
 		return BookNotFound
 	}
 
-	return s.repository.Delete(name)
+	return s.repository.Delete(id)
+}
+
+func (s *ServiceBookImpl) ExistsById(id string) (bool, error) {
+	return s.repository.ExistsById(id)
 }
 
 func (s *ServiceBookImpl) ExistByName(name string) (bool, error) {
-	_, err := s.repository.Get(name)
-	if err != nil {
-		if errors.Is(err, InMemory.NoSuchBook) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
+	return s.repository.ExistsByName(name)
 }

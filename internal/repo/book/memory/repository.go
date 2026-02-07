@@ -1,4 +1,4 @@
-package InMemory
+package memory
 
 import (
 	"Library/internal/model"
@@ -33,29 +33,51 @@ func (repo *RepositoryImpl) Create(name string, author ...model.Author) (*model.
 	}
 
 	repo.rw.Lock()
-	repo.data[book.Name] = book
+	repo.data[book.Id] = book
 	repo.rw.Unlock()
 
 	return book, nil
 }
 
-func (repo *RepositoryImpl) Get(name string) (*model.Book, error) {
+func (repo *RepositoryImpl) Get(id string) (*model.Book, error) {
 	repo.rw.Lock()
 	defer repo.rw.Unlock()
 
-	if book, ok := repo.data[name]; ok {
+	if book, ok := repo.data[id]; ok {
 		return book, nil
 	}
 
 	return nil, NoSuchBook
 }
 
-func (repo *RepositoryImpl) Delete(name string) error {
+func (repo *RepositoryImpl) ExistsById(id string) (bool, error) {
 	repo.rw.Lock()
 	defer repo.rw.Unlock()
 
-	if _, ok := repo.data[name]; ok {
-		delete(repo.data, name)
+	_, ok := repo.data[id]
+
+	return ok, nil
+}
+
+func (repo *RepositoryImpl) ExistsByName(name string) (bool, error) {
+	repo.rw.Lock()
+	defer repo.rw.Unlock()
+
+	for _, book := range repo.data {
+		if book.Name == name {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (repo *RepositoryImpl) Delete(id string) error {
+	repo.rw.Lock()
+	defer repo.rw.Unlock()
+
+	if _, ok := repo.data[id]; ok {
+		delete(repo.data, id)
 		return nil
 	}
 

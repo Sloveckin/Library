@@ -10,11 +10,11 @@ import (
 )
 
 type deleteService interface {
-	Delete(name string) error
+	Delete(id string) error
 }
 
 type deleteRequest struct {
-	Name string `json:"name" validate:"required"`
+	Id string `json:"id" validate:"required"`
 }
 
 type deleteResponse struct {
@@ -39,7 +39,7 @@ func Delete(service deleteService) http.HandlerFunc {
 			return
 		}
 
-		err = service.Delete(req.Name)
+		err = service.Delete(req.Id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))

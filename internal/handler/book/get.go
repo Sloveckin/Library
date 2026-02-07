@@ -11,7 +11,7 @@ import (
 )
 
 type getRequest struct {
-	Name string `json:"name" validate:"required"`
+	Id string `json:"id" validate:"required"`
 }
 
 type getResponse struct {
@@ -22,7 +22,7 @@ type getResponse struct {
 }
 
 type getService interface {
-	Get(name string) (*model.Book, error)
+	Get(id string) (*model.Book, error)
 }
 
 func Get(service getService) http.HandlerFunc {
@@ -43,7 +43,7 @@ func Get(service getService) http.HandlerFunc {
 			return
 		}
 
-		book, err := service.Get(req.Name)
+		book, err := service.Get(req.Id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))

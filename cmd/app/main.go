@@ -2,7 +2,7 @@ package main
 
 import (
 	"Library/internal/handler/book"
-	"Library/internal/repo/InMemory"
+	book2 "Library/internal/repo/book/memory"
 	servicebook "Library/internal/service/book"
 	"net/http"
 	"os"
@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	repo := InMemory.NewRepositoryInMemory()
+	repo := book2.NewRepositoryInMemory()
 	bookService := servicebook.NewServiceBook(repo)
 
 	r := chi.NewRouter()
