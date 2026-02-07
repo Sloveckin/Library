@@ -51,16 +51,12 @@ func (s *ServiceBookImpl) Get(name string) (*model.Book, error) {
 }
 
 func (s *ServiceBookImpl) Delete(id string) error {
-	exists, err := s.ExistsById(id)
+	err := s.repository.Delete(id)
 	if err != nil {
-		return err
-	}
-
-	if !exists {
 		return BookNotFound
 	}
 
-	return s.repository.Delete(id)
+	return nil
 }
 
 func (s *ServiceBookImpl) ExistsById(id string) (bool, error) {
