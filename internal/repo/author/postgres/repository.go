@@ -32,7 +32,7 @@ func (s *AuthorRepositoryPostgres) Create(name string) (*model.Author, error) {
 
 func (s *AuthorRepositoryPostgres) Get(id string) (*model.Author, error) {
 	var author model.Author
-	err := s.pool.QueryRow(context.Background(), "SELECT * FROM authors WHERE id = $1", id).Scan(&author)
+	err := s.pool.QueryRow(context.Background(), "SELECT id, name FROM authors WHERE id = $1", id).Scan(&author.Id, &author.Name)
 	if err != nil {
 		return nil, err
 	}
