@@ -20,7 +20,7 @@ type Repository interface {
 }
 
 type AuthorService interface {
-	ExistsByName(name string) (bool, error)
+	ExistsById(id string) (bool, error)
 }
 
 type ServiceBookImpl struct {
@@ -46,7 +46,7 @@ func (s *ServiceBookImpl) Create(name string, authors ...model.Author) (*model.B
 	}
 
 	for _, author := range authors {
-		ok, err := s.authorService.ExistsByName(author.Name)
+		ok, err := s.authorService.ExistsById(author.Id)
 		if err != nil {
 			return nil, err
 		}

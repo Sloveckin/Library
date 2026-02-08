@@ -52,7 +52,7 @@ func Get(service getService) http.HandlerFunc {
 
 		authors := make([]string, 0, len(book.Authors))
 		for _, a := range book.Authors {
-			authors = append(authors, a.Name)
+			authors = append(authors, a.Id)
 		}
 
 		w.WriteHeader(http.StatusCreated)

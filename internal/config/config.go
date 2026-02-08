@@ -9,12 +9,12 @@ import (
 
 type Config struct {
 	Env        string     `yaml:"env"`
+	StorageUrl string     `yaml:"storage_url" env-required:"true"`
 	HttpServer HttpServer `yaml:"http_server"`
 }
 
 type HttpServer struct {
 	Address     string        `yaml:"address"`
-	Port        int           `yaml:"port"`
 	Timeout     time.Duration `yaml:"timeout"`
 	IdleTimeout time.Duration `yaml:"idle_timeout"`
 }

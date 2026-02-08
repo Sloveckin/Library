@@ -51,9 +51,18 @@ func (s *AuthorServiceImpl) Get(id string) (*model.Author, error) {
 }
 
 func (s *AuthorServiceImpl) Delete(id string) error {
-	err := s.authorRepository.Delete(id)
+	exists, err := s.ExistsById(id)
 	if err != nil {
+		return err
+	}
+
+	if !exists {
 		return AuthorNotExists
+	}
+
+	err = s.authorRepository.Delete(id)
+	if err != nil {
+		return err
 	}
 
 	return nil

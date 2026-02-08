@@ -4,10 +4,11 @@ import (
 	"Library/internal/config"
 	"Library/internal/handler/author"
 	"Library/internal/handler/book"
-	author2 "Library/internal/repo/author/memory"
-	book2 "Library/internal/repo/book/memory"
+	author2 "Library/internal/repo/author/postgres"
+	book2 "Library/internal/repo/book/postgresql"
 	serviceauthor "Library/internal/service/author"
 	servicebook "Library/internal/service/book"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -18,10 +19,18 @@ import (
 func main() {
 	cnf := config.MustLoad()
 
-	authorRepo := author2.NewAuthorRepositoryInMemory()
+	authorRepo, err := author2.NewAuthorRepositoryPostgres(cnf.StorageUrl)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	authorService := serviceauthor.NewAuthorServiceImpl(authorRepo)
 
-	bookRepo := book2.NewRepositoryInMemory()
+	bookRepo, err := book2.NewBookPostgresRepository(cnf.StorageUrl)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	bookService := servicebook.NewServiceBook(bookRepo, authorService)
 
 	r := chi.NewRouter()

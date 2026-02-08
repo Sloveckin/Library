@@ -16,8 +16,8 @@ type createService interface {
 }
 
 type createRequest struct {
-	Name   string   `json:"name" validate:"required"`
-	Author []string `json:"author" validate:"required"`
+	Name     string   `json:"name" validate:"required"`
+	AuthorId []string `json:"author_id" validate:"required"`
 }
 
 type createResponse struct {
@@ -44,9 +44,9 @@ func Create(service createService) http.HandlerFunc {
 		}
 
 		name := strings.TrimSpace(req.Name)
-		authors := make([]model.Author, 0, len(req.Author))
-		for _, author := range req.Author {
-			authors = append(authors, model.Author{Name: author})
+		authors := make([]model.Author, 0, len(req.AuthorId))
+		for _, id := range req.AuthorId {
+			authors = append(authors, model.Author{Id: id})
 		}
 
 		book, err := service.Create(name, authors...)

@@ -3,8 +3,14 @@ package postgres
 import (
 	"Library/internal/model"
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	NoSuchAuthor = errors.New("no such author")
 )
 
 type AuthorRepositoryPostgres struct {
@@ -34,16 +40,40 @@ func (s *AuthorRepositoryPostgres) Get(id string) (*model.Author, error) {
 	var author model.Author
 	err := s.pool.QueryRow(context.Background(), "SELECT id, name FROM authors WHERE id = $1", id).Scan(&author.Id, &author.Name)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NoSuchAuthor
+		}
 		return nil, err
 	}
 
 	return &author, nil
 }
 
-func (s *AuthorRepositoryPostgres) Delete(id string) error {
-	_, err := s.pool.Exec(context.Background(), "DELETE FROM authors WHERE id = $1", id)
+func (a *AuthorRepositoryPostgres) Delete(id string) error {
+	ctx := context.Background()
 
-	return err
+	tx, err := a.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, "delete from AuthorToBook where BookId = ($1)", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, "delete from Authors where id = ($1)", id)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *AuthorRepositoryPostgres) ExistsById(id string) (bool, error) {
