@@ -5,8 +5,13 @@ create table Books (
 
 create table Authors (
     Id serial not null primary key,
-    BookId integer,
-    Name varchar(64) not null,
+    Name varchar(64) not null
+);
 
+create table AuthorToBook(
+    AuthorId integer,
+    BookId integer,
+
+    foreign key (AuthorId) references Authors(Id),
     foreign key (BookId) references Books(Id)
 );
