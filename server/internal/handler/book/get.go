@@ -3,11 +3,9 @@ package book
 import (
 	v "Library/internal/handler"
 	"Library/internal/model"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/render"
-	"github.com/go-playground/validator/v10"
 )
 
 type getRequest struct {
@@ -27,23 +25,14 @@ type getService interface {
 
 func Get(service getService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req getRequest
-		err := render.DecodeJSON(r.Body, &req)
-		if err != nil {
-			fmt.Println("Error while decoding request:", err)
+		id := r.URL.Query().Get("id")
+		if id == "" {
 			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, v.Error("id is required"))
 			return
 		}
 
-		validate := validator.New()
-		err = validate.Struct(req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
-			return
-		}
-
-		book, err := service.Get(req.Id)
+		book, err := service.Get(id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))

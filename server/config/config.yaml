@@ -1,5 +1,5 @@
 env: "local"
-storage_url: "postgresql://postgres:1234@localhost:5432/postgres"
+storage_url: "postgresql://postgres:1234@localhost:5432/library"
 http_server:
   address: "localhost:8080"
   timeout: 4s
