@@ -11,7 +11,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type createService interface {
+//go:generate mockery --name=CreateService
+type CreateService interface {
 	Create(name string) (*model.Author, error)
 }
 
@@ -19,12 +20,12 @@ type createRequest struct {
 	Name string `json:"name" validate:"required"`
 }
 
-type createResponse struct {
+type CreateResponse struct {
 	v.Response
 	Id string `json:"id"`
 }
 
-func Create(service createService) http.HandlerFunc {
+func Create(service CreateService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req createRequest
 		err := render.DecodeJSON(r.Body, &req)
@@ -51,7 +52,7 @@ func Create(service createService) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		render.JSON(w, r, createResponse{
+		render.JSON(w, r, CreateResponse{
 			Response: v.Ok(),
 			Id:       book.Id,
 		})
