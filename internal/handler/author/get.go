@@ -3,16 +3,10 @@ package author
 import (
 	v "Library/internal/handler"
 	"Library/internal/model"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/render"
-	"github.com/go-playground/validator/v10"
 )
-
-type getRequest struct {
-	Id string `json:"id" validate:"required"`
-}
 
 type getResponse struct {
 	v.Response
@@ -20,29 +14,21 @@ type getResponse struct {
 	Name string `json:"name" validate:"required"`
 }
 
-type getService interface {
+//go:generate mockery --name=GetService
+type GetService interface {
 	Get(id string) (*model.Author, error)
 }
 
-func Get(service getService) http.HandlerFunc {
+func Get(service GetService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req getRequest
-		err := render.DecodeJSON(r.Body, &req)
-		if err != nil {
-			fmt.Println("Error while decoding request:", err)
+		id := r.URL.Query().Get("id")
+		if id == "" {
 			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, v.Error("id is required"))
 			return
 		}
 
-		validate := validator.New()
-		err = validate.Struct(req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
-			return
-		}
-
-		author, err := service.Get(req.Id)
+		author, err := service.Get(id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))

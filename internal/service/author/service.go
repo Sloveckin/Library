@@ -10,6 +10,7 @@ var (
 	AuthorNotExists = errors.New("author not exists")
 )
 
+//go:generate mockery --name=AuthorRepository
 type AuthorRepository interface {
 	Create(name string) (*model.Author, error)
 	Get(id string) (*model.Author, error)
