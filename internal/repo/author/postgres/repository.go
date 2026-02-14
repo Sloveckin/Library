@@ -57,7 +57,9 @@ func (a *AuthorRepositoryPostgres) Delete(id string) error {
 		return err
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Commit(ctx)
+	}()
 
 	_, err = tx.Exec(ctx, "delete from AuthorToBook where BookId = ($1)", id)
 	if err != nil {

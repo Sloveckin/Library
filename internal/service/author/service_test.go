@@ -10,9 +10,6 @@ import (
 )
 
 func TestAuthorServiceImpl_Create(t *testing.T) {
-	type fields struct {
-		authorRepository AuthorRepository
-	}
 	type args struct {
 		name string
 	}

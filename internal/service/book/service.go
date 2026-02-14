@@ -11,6 +11,7 @@ var (
 	AuthorNotFound    = errors.New("author not found")
 )
 
+//go:generate mockery --name=Repository
 type Repository interface {
 	Create(name string, authors ...model.Author) (*model.Book, error)
 	Get(id string) (*model.Book, error)
@@ -19,6 +20,7 @@ type Repository interface {
 	ExistsByName(name string) (bool, error)
 }
 
+//go:generate mockery --name=AuthorService
 type AuthorService interface {
 	ExistsById(id string) (bool, error)
 }
