@@ -1,17 +1,15 @@
 package postgres
 
 import (
-	"Library/internal/model"
 	"context"
 	"errors"
 
+	"Library/internal/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	NoSuchAuthor = errors.New("no such author")
-)
+var ErrNoSuchAuthor = errors.New("no such author")
 
 type AuthorRepositoryPostgres struct {
 	pool *pgxpool.Pool
@@ -28,7 +26,8 @@ func NewAuthorRepositoryPostgres(connectionString string) (*AuthorRepositoryPost
 
 func (a *AuthorRepositoryPostgres) Create(name string) (*model.Author, error) {
 	var author model.Author
-	err := a.pool.QueryRow(context.Background(), "INSERT INTO authors (name) VALUES ($1) RETURNING id, name", name).Scan(&author.Id, &author.Name)
+	err := a.pool.QueryRow(context.Background(), "INSERT INTO authors (name) VALUES ($1) RETURNING id, name", name).
+		Scan(&author.Id, &author.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +37,11 @@ func (a *AuthorRepositoryPostgres) Create(name string) (*model.Author, error) {
 
 func (a *AuthorRepositoryPostgres) Get(id string) (*model.Author, error) {
 	var author model.Author
-	err := a.pool.QueryRow(context.Background(), "SELECT id, name FROM authors WHERE id = $1", id).Scan(&author.Id, &author.Name)
+	err := a.pool.QueryRow(context.Background(), "SELECT id, name FROM authors WHERE id = $1", id).
+		Scan(&author.Id, &author.Name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NoSuchAuthor
+			return nil, ErrNoSuchAuthor
 		}
 		return nil, err
 	}
@@ -80,7 +80,8 @@ func (a *AuthorRepositoryPostgres) Delete(id string) error {
 
 func (a *AuthorRepositoryPostgres) ExistsById(id string) (bool, error) {
 	var exists bool
-	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE id = $1)", id).Scan(&exists)
+	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE id = $1)", id).
+		Scan(&exists)
 	if err != nil {
 		return false, err
 	}
@@ -90,7 +91,8 @@ func (a *AuthorRepositoryPostgres) ExistsById(id string) (bool, error) {
 
 func (a *AuthorRepositoryPostgres) ExistsByName(name string) (bool, error) {
 	var exists bool
-	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE name = $1)", name).Scan(&exists)
+	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE name = $1)", name).
+		Scan(&exists)
 	if err != nil {
 		return false, err
 	}

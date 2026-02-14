@@ -1,16 +1,14 @@
 package memory
 
 import (
-	"Library/internal/model"
 	"errors"
 	"sync"
 
+	"Library/internal/model"
 	"github.com/google/uuid"
 )
 
-var (
-	NoSuchBook = errors.New("no such book")
-)
+var ErrNoSuchBook = errors.New("no such book")
 
 type RepositoryImpl struct {
 	rw   sync.RWMutex
@@ -25,7 +23,6 @@ func NewRepositoryInMemory() *RepositoryImpl {
 }
 
 func (repo *RepositoryImpl) Create(name string, author ...model.Author) (*model.Book, error) {
-
 	book := &model.Book{
 		Id:      uuid.NewString(),
 		Name:    name,
@@ -47,7 +44,7 @@ func (repo *RepositoryImpl) Get(id string) (*model.Book, error) {
 		return book, nil
 	}
 
-	return nil, NoSuchBook
+	return nil, ErrNoSuchBook
 }
 
 func (repo *RepositoryImpl) ExistsById(id string) (bool, error) {
@@ -81,5 +78,5 @@ func (repo *RepositoryImpl) Delete(id string) error {
 		return nil
 	}
 
-	return NoSuchBook
+	return ErrNoSuchBook
 }

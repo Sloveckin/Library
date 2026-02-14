@@ -1,16 +1,14 @@
 package memory
 
 import (
-	"Library/internal/model"
 	"errors"
 	"sync"
 
+	"Library/internal/model"
 	"github.com/google/uuid"
 )
 
-var (
-	NoSuchAuthor = errors.New("no such author")
-)
+var ErrNoSuchAuthor = errors.New("no such author")
 
 type RepositoryInMemory struct {
 	rw   sync.RWMutex
@@ -43,7 +41,7 @@ func (s *RepositoryInMemory) Get(id string) (*model.Author, error) {
 
 	author, ok := s.data[id]
 	if !ok {
-		return nil, NoSuchAuthor
+		return nil, ErrNoSuchAuthor
 	}
 
 	return author, nil
@@ -55,7 +53,7 @@ func (s *RepositoryInMemory) Delete(id string) error {
 
 	_, ok := s.data[id]
 	if !ok {
-		return NoSuchAuthor
+		return ErrNoSuchAuthor
 	}
 
 	delete(s.data, id)

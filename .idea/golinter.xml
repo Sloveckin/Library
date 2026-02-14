@@ -3,4 +3,16 @@
   <component name="GoLinterFmtOnSave">
     <option name="enabledOnSave" value="true" />
   </component>
+  <component name="GoLinterSettings">
+    <option name="enabledFormatters">
+      <list>
+        <option value="gofumpt" />
+        <option value="swaggo" />
+        <option value="golines" />
+        <option value="gofmt" />
+        <option value="gci" />
+        <option value="goimports" />
+      </list>
+    </option>
+  </component>
 </project>

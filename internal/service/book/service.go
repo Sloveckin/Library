@@ -1,14 +1,15 @@
 package service_book
 
 import (
-	"Library/internal/model"
 	"errors"
+
+	"Library/internal/model"
 )
 
 var (
-	BookAlreadyExists = errors.New("book already exists")
-	BookNotFound      = errors.New("book not found")
-	AuthorNotFound    = errors.New("author not found")
+	ErrBookAlreadyExists = errors.New("book already exists")
+	ErrBookNotFound      = errors.New("book not found")
+	ErrAuthorNotFound    = errors.New("author not found")
 )
 
 //go:generate mockery --name=Repository
@@ -44,7 +45,7 @@ func (s *ServiceBookImpl) Create(name string, authors ...model.Author) (*model.B
 	}
 
 	if exist {
-		return nil, BookAlreadyExists
+		return nil, ErrBookAlreadyExists
 	}
 
 	for _, author := range authors {
@@ -54,7 +55,7 @@ func (s *ServiceBookImpl) Create(name string, authors ...model.Author) (*model.B
 		}
 
 		if !ok {
-			return nil, AuthorNotFound
+			return nil, ErrAuthorNotFound
 		}
 	}
 
@@ -73,7 +74,7 @@ func (s *ServiceBookImpl) Get(name string) (*model.Book, error) {
 func (s *ServiceBookImpl) Delete(id string) error {
 	err := s.repository.Delete(id)
 	if err != nil {
-		return BookNotFound
+		return ErrBookNotFound
 	}
 
 	return nil
