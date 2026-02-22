@@ -8,10 +8,6 @@ import (
 	"github.com/go-chi/render"
 )
 
-type getRequest struct {
-	Id string `json:"id" validate:"required"`
-}
-
 type getResponse struct {
 	v.Response
 	Id      string   `json:"id" validate:"required"`

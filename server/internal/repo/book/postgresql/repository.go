@@ -28,7 +28,9 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 		return nil, err
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Commit(ctx)
+	}()
 
 	var book model.Book
 	book.Authors = make([]model.Author, 0, len(authors))
@@ -62,7 +64,9 @@ func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
 		return nil, err
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Commit(ctx)
+	}()
 
 	var book model.Book
 	err = tx.QueryRow(ctx, "SELECT id, name FROM books WHERE id = $1", id).Scan(&book.Id, &book.Name)
@@ -100,7 +104,9 @@ func (b BookPostgresRepository) Delete(id string) error {
 		return err
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Commit(ctx)
+	}()
 
 	_, err = tx.Exec(ctx, "delete from AuthorToBook where BookId = ($1)", id)
 	if err != nil {

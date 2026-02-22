@@ -11,10 +11,6 @@ type deleteService interface {
 	Delete(id string) error
 }
 
-type deleteRequest struct {
-	Id string `json:"id" validate:"required"`
-}
-
 type deleteResponse struct {
 	v.Response
 }

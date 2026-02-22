@@ -1,10 +1,9 @@
 package config
 
 import (
+	"log"
 	"os"
 	"time"
-
-	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
@@ -20,18 +19,28 @@ type HttpServer struct {
 }
 
 func MustLoad() *Config {
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		//panic("CONFIG_PATH environment variable not set")
-		configPath = "config/config.yaml"
-	}
+	config := &Config{}
 
-	var config Config
+	config.Env = os.Getenv("ENV")
+	config.StorageUrl = os.Getenv("STORAGE_URL")
+	config.HttpServer.Address = os.Getenv("HTTP_SERVER_ADDRESS")
 
-	err := cleanenv.ReadConfig(configPath, &config)
+	var err error
+	config.HttpServer.Timeout, err = time.ParseDuration(os.Getenv("HTTP_SERVER_TIMEOUT"))
 	if err != nil {
-		panic("Error reading config: " + err.Error())
+		log.Fatalf("Cannot parse HTTP_SERVER_TIMEOUT: %v", err)
+	}
+	config.HttpServer.IdleTimeout, err = time.ParseDuration(os.Getenv("HTTP_SERVER_IDLE_TIMEOUT"))
+	if err != nil {
+		log.Fatalf("Cannot parse HTTP_SERVER_IDLE_TIMEOUT: %v", err)
 	}
 
-	return &config
+	// Логирование
+	log.Printf("Config loaded:")
+	log.Printf("  Env: %s", config.Env)
+	log.Printf("  StorageUrl: %s", config.StorageUrl)
+	log.Printf("  HttpServer.Address: %s", config.HttpServer.Address)
+	log.Printf("  HttpServer.Timeout: %v", config.HttpServer.Timeout)
+	log.Printf("  HttpServer.IdleTimeout: %v", config.HttpServer.IdleTimeout)
+	return config
 }

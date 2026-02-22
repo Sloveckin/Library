@@ -8,21 +8,18 @@ import (
 	"github.com/go-chi/render"
 )
 
-type getRequest struct {
-	Id string `json:"id" validate:"required"`
-}
-
 type getResponse struct {
 	v.Response
 	Id   string `json:"id" validate:"required"`
 	Name string `json:"name" validate:"required"`
 }
 
-type getService interface {
+//go:generate mockery --name=GetService
+type GetService interface {
 	Get(id string) (*model.Author, error)
 }
 
-func Get(service getService) http.HandlerFunc {
+func Get(service GetService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
 		if id == "" {

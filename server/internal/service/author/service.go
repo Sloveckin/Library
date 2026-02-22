@@ -1,15 +1,17 @@
 package service_author
 
 import (
-	"Library/internal/model"
 	"errors"
+
+	"Library/internal/model"
 )
 
 var (
-	AuthorExists    = errors.New("author already exists")
-	AuthorNotExists = errors.New("author not exists")
+	ErrAuthorExists    = errors.New("author already exists")
+	ErrAuthorNotExists = errors.New("author not exists")
 )
 
+//go:generate mockery --name=AuthorRepository
 type AuthorRepository interface {
 	Create(name string) (*model.Author, error)
 	Get(id string) (*model.Author, error)
@@ -35,7 +37,7 @@ func (s *AuthorServiceImpl) Create(name string) (*model.Author, error) {
 	}
 
 	if exist {
-		return nil, AuthorExists
+		return nil, ErrAuthorExists
 	}
 
 	author, err := s.authorRepository.Create(name)
@@ -57,7 +59,7 @@ func (s *AuthorServiceImpl) Delete(id string) error {
 	}
 
 	if !exists {
-		return AuthorNotExists
+		return ErrAuthorNotExists
 	}
 
 	err = s.authorRepository.Delete(id)
