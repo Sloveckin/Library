@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: library
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/postgresql:/docker-entrypoint-initdb.d/
+  
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=1234
+      - DB_NAME=library
+      - ENV=local
+      - STORAGE_URL=postgresql://postgres:1234@db:5432/library
+      - HTTP_SERVER_ADDRESS=server:8080
+      - HTTP_SERVER_TIMEOUT=10s
+      - HTTP_SERVER_IDLE_TIMEOUT=30s
+
+  client:
+    build:
+      context: ./devops-client-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    environment:
+      - REACT_APP_API_URL=http://client:8080

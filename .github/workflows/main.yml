@@ -3,7 +3,7 @@ on:
   push
 
 jobs:
-  Build:
+  Build-Server:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -11,11 +11,15 @@ jobs:
       - name: set up go
         uses: actions/setup-go@v6
         with:
+            working-directory: server
             go-version: '1.25'
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
-  Test:
-    needs: [Build]
+        with:
+            working-directory: server
+
+  Test-Server:
+    needs: [Build-Server]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -28,4 +32,40 @@ jobs:
         with:
           go-version: '1.25'
       - name: test
+        working-directory: server
         run: go test ./internal/service/author/
+
+  Build-Client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops-client-app 
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: install dependencies
+        run: npm install
+      - name: build
+        run: npm run build
+        
+  Test-Client:
+    needs: [Build-Client]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops-client-app 
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: install dependencies
+        run: npm install
+      - name: test
+        run: npm test -- --coverage --watchAll=false
