@@ -3,7 +3,7 @@ package book
 import (
 	v "Library/internal/handler"
 	"Library/internal/model"
-	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -17,7 +17,7 @@ type createService interface {
 
 type createRequest struct {
 	Name     string   `json:"name" validate:"required"`
-	AuthorId []string `json:"author_id" validate:"required"`
+	AuthorId []string `json:"authors" validate:"required"`
 }
 
 type createResponse struct {
@@ -30,7 +30,7 @@ func Create(service createService) http.HandlerFunc {
 		var req createRequest
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
-			fmt.Println("Error while decoding request:", err)
+			log.Println("Error while decoding request:", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -38,6 +38,7 @@ func Create(service createService) http.HandlerFunc {
 		validate := validator.New()
 		err = validate.Struct(req)
 		if err != nil {
+			log.Println("Error while validating request:", err)
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))
 			return
@@ -51,6 +52,7 @@ func Create(service createService) http.HandlerFunc {
 
 		book, err := service.Create(name, authors...)
 		if err != nil {
+			log.Println("Error while service request:", err)
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, v.Error(err.Error()))
 			return

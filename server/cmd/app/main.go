@@ -51,8 +51,8 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(corsMiddleware)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.Recoverer)
+	//r.Use(middleware.RequestID)
+	//r.Use(middleware.Recoverer)
 
 	r.Route("/book", func(r chi.Router) {
 		r.Put("/create", book.Create(bookService))

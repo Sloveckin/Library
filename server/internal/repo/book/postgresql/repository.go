@@ -3,7 +3,9 @@ package postgres
 import (
 	"Library/internal/model"
 	"context"
+	"log"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,31 +27,39 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
 		return nil, err
 	}
 
 	defer func() {
-		_ = tx.Commit(ctx)
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
 	}()
 
 	var book model.Book
 	book.Authors = make([]model.Author, 0, len(authors))
 
-	err = tx.QueryRow(ctx, "INSERT INTO books (name) VALUES ($1) RETURNING id, name", name).Scan(&book.Id, &book.Name)
+	err = tx.QueryRow(ctx, "INSERT INTO Books (Name) VALUES ($1) RETURNING Id, Name", name).Scan(&book.Id, &book.Name)
 	if err != nil {
+		log.Printf("Failed to query book: %v", err)
+		_ = tx.Rollback(ctx)
 		return nil, err
 	}
 
 	for _, author := range authors {
 		_, err = tx.Exec(ctx, "INSERT INTO AuthorToBook (AuthorId, BookId) VALUES ($1, $2)", author.Id, book.Id)
 		if err != nil {
+			log.Printf("Failed to insert into AuthorToBook: %v", err)
+			_ = tx.Rollback(ctx)
 			return nil, err
 		}
 	}
 
 	book.Authors = append(book.Authors, authors...)
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
 		return nil, err
 	}
 
@@ -61,35 +71,53 @@ func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
 		return nil, err
 	}
 
 	defer func() {
-		_ = tx.Commit(ctx)
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
 	}()
 
 	var book model.Book
-	err = tx.QueryRow(ctx, "SELECT id, name FROM books WHERE id = $1", id).Scan(&book.Id, &book.Name)
+	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Id = $1", id).Scan(&book.Id, &book.Name)
 	if err != nil {
+		log.Printf("Failed to query book: %v", err)
+		_ = tx.Rollback(ctx)
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, "SELECT s.Id, s.Name FROM AuthorToBook as f left join Authors as s on f.AuthorId = s.Id  WHERE BookId = $1", id)
+	rows, err := tx.Query(ctx, "SELECT s.Id, s.Name FROM AuthorToBook AS f LEFT JOIN Authors AS s ON f.AuthorId = s.Id WHERE f.BookId = $1", id)
 	if err != nil {
+		log.Printf("Failed to query authors: %v", err)
+		_ = tx.Rollback(ctx)
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var author model.Author
 		err = rows.Scan(&author.Id, &author.Name)
 		if err != nil {
+			log.Printf("Failed to scan author: %v", err)
+			_ = tx.Rollback(ctx)
 			return nil, err
 		}
 
 		book.Authors = append(book.Authors, author)
 	}
 
+	if err = rows.Err(); err != nil {
+		log.Printf("Rows iteration error: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
 	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
 		return nil, err
 	}
 
@@ -101,24 +129,32 @@ func (b BookPostgresRepository) Delete(id string) error {
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
 		return err
 	}
 
 	defer func() {
-		_ = tx.Commit(ctx)
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
 	}()
 
-	_, err = tx.Exec(ctx, "delete from AuthorToBook where BookId = ($1)", id)
+	_, err = tx.Exec(ctx, "DELETE FROM AuthorToBook WHERE BookId = $1", id)
 	if err != nil {
+		log.Printf("Failed to delete from AuthorToBook: %v", err)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
-	_, err = tx.Exec(ctx, "delete from Books where id = ($1)", id)
+	_, err = tx.Exec(ctx, "DELETE FROM Books WHERE Id = $1", id)
 	if err != nil {
+		log.Printf("Failed to delete from Books: %v", err)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
 		return err
 	}
 

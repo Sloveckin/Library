@@ -2,6 +2,7 @@ package service_book
 
 import (
 	"errors"
+	"log"
 
 	"Library/internal/model"
 )
@@ -61,6 +62,7 @@ func (s *ServiceBookImpl) Create(name string, authors ...model.Author) (*model.B
 
 	book, err := s.repository.Create(name, authors...)
 	if err != nil {
+		log.Println("Error while creating:", err)
 		return nil, err
 	}
 

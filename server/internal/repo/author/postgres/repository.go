@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"errors"
+	"log"
 
 	"Library/internal/model"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,7 +28,8 @@ func NewAuthorRepositoryPostgres(connectionString string) (*AuthorRepositoryPost
 
 func (a *AuthorRepositoryPostgres) Create(name string) (*model.Author, error) {
 	var author model.Author
-	err := a.pool.QueryRow(context.Background(), "INSERT INTO authors (name) VALUES ($1) RETURNING id, name", name).
+
+	err := a.pool.QueryRow(context.Background(), "INSERT INTO Authors (Name) VALUES ($1) RETURNING Id, Name", name).
 		Scan(&author.Id, &author.Name)
 	if err != nil {
 		return nil, err
@@ -37,7 +40,8 @@ func (a *AuthorRepositoryPostgres) Create(name string) (*model.Author, error) {
 
 func (a *AuthorRepositoryPostgres) Get(id string) (*model.Author, error) {
 	var author model.Author
-	err := a.pool.QueryRow(context.Background(), "SELECT id, name FROM authors WHERE id = $1", id).
+
+	err := a.pool.QueryRow(context.Background(), "SELECT Id, Name FROM Authors WHERE Id = $1", id).
 		Scan(&author.Id, &author.Name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -58,20 +62,27 @@ func (a *AuthorRepositoryPostgres) Delete(id string) error {
 	}
 
 	defer func() {
-		_ = tx.Commit(ctx)
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
 	}()
 
-	_, err = tx.Exec(ctx, "delete from AuthorToBook where BookId = ($1)", id)
+	_, err = tx.Exec(ctx, "DELETE FROM AuthorToBook WHERE AuthorId = $1", id)
 	if err != nil {
+		log.Printf("Failed to delete from AuthorToBook: %v", err)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
-	_, err = tx.Exec(ctx, "delete from Authors where id = ($1)", id)
+	_, err = tx.Exec(ctx, "DELETE FROM Authors WHERE Id = $1", id)
 	if err != nil {
+		log.Printf("Failed to delete from Authors: %v", err)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
 		return err
 	}
 
@@ -80,7 +91,7 @@ func (a *AuthorRepositoryPostgres) Delete(id string) error {
 
 func (a *AuthorRepositoryPostgres) ExistsById(id string) (bool, error) {
 	var exists bool
-	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE id = $1)", id).
+	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM Authors WHERE Id = $1)", id).
 		Scan(&exists)
 	if err != nil {
 		return false, err
@@ -91,7 +102,7 @@ func (a *AuthorRepositoryPostgres) ExistsById(id string) (bool, error) {
 
 func (a *AuthorRepositoryPostgres) ExistsByName(name string) (bool, error) {
 	var exists bool
-	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT FROM authors WHERE name = $1)", name).
+	err := a.pool.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM Authors WHERE Name = $1)", name).
 		Scan(&exists)
 	if err != nil {
 		return false, err

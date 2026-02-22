@@ -3,6 +3,7 @@ package book
 import (
 	v "Library/internal/handler"
 	"Library/internal/model"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/render"
@@ -21,6 +22,7 @@ type getService interface {
 
 func Get(service getService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Handling GET /book/get, URL: %s", r.URL.String())
 		id := r.URL.Query().Get("id")
 		if id == "" {
 			w.WriteHeader(http.StatusBadRequest)
