@@ -18,6 +18,7 @@ type AuthorRepository interface {
 	Delete(id string) error
 	ExistsById(id string) (bool, error)
 	ExistsByName(name string) (bool, error)
+	UpdateName(id, name string) error
 }
 
 type AuthorServiceImpl struct {
@@ -76,4 +77,22 @@ func (s *AuthorServiceImpl) ExistsByName(name string) (bool, error) {
 
 func (s *AuthorServiceImpl) ExistsById(id string) (bool, error) {
 	return s.authorRepository.ExistsById(id)
+}
+
+func (s *AuthorServiceImpl) UpdateName(id, name string) error {
+	exist, err := s.ExistsById(id)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		return ErrAuthorNotExists
+	}
+
+	err = s.authorRepository.UpdateName(id, name)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

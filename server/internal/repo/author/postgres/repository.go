@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"Library/internal/model"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -109,4 +108,14 @@ func (a *AuthorRepositoryPostgres) ExistsByName(name string) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (a *AuthorRepositoryPostgres) UpdateName(id, name string) error {
+	err := a.pool.QueryRow(context.Background(), "UPDATE Authors SET Name = $1 WHERE Id = $2", name, id).
+		Scan()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
