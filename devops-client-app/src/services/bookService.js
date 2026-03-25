@@ -13,3 +13,9 @@ export const getBook = (id) => request(`/book/get?id=${id}`, {
 export const deleteBook = (id) => request(`/book/delete?id=${id}`, {
   method: 'DELETE',
 });
+
+export const updateBook = (id, name, authors) => request('/book/update', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ id, name, authors }),
+});

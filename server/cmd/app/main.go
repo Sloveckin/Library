@@ -56,12 +56,14 @@ func main() {
 
 	r.Route("/book", func(r chi.Router) {
 		r.Put("/create", book.Create(bookService))
+		r.Put("/update", book.Update(bookService))
 		r.Get("/get", book.Get(bookService))
 		r.Delete("/delete", book.Delete(bookService))
 	})
 
 	r.Route("/author", func(r chi.Router) {
 		r.Put("/create", author.Create(authorService))
+		r.Put("/update", author.Update(authorService))
 		r.Get("/get", author.Get(authorService))
 		r.Delete("/delete", author.Delete(authorService))
 	})

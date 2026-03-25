@@ -124,6 +124,64 @@ func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
 	return &book, nil
 }
 
+func (b BookPostgresRepository) GetByName(name string) (*model.Book, error) {
+	ctx := context.Background()
+
+	tx, err := b.pool.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		return nil, err
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
+	}()
+
+	var book model.Book
+	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Name = $1", name).Scan(&book.Id, &book.Name)
+	if err != nil {
+		log.Printf("Failed to query book: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx, "SELECT s.Id, s.Name FROM AuthorToBook AS f LEFT JOIN Authors AS s ON f.AuthorId = s.Id WHERE f.BookId = $1", book.Id)
+	if err != nil {
+		log.Printf("Failed to query authors: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var author model.Author
+		err = rows.Scan(&author.Id, &author.Name)
+		if err != nil {
+			log.Printf("Failed to scan author: %v", err)
+			_ = tx.Rollback(ctx)
+			return nil, err
+		}
+
+		book.Authors = append(book.Authors, author)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Rows iteration error: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		return nil, err
+	}
+
+	return &book, nil
+}
+
 func (b BookPostgresRepository) Delete(id string) error {
 	ctx := context.Background()
 
@@ -159,6 +217,57 @@ func (b BookPostgresRepository) Delete(id string) error {
 	}
 
 	return nil
+}
+
+func (b BookPostgresRepository) Update(id, name string, authors ...model.Author) (*model.Book, error) {
+	ctx := context.Background()
+
+	tx, err := b.pool.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		return nil, err
+	}
+
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			log.Printf("Failed to rollback transaction: %v", err)
+		}
+	}()
+
+	var book model.Book
+	book.Authors = make([]model.Author, 0, len(authors))
+
+	err = tx.QueryRow(ctx, "UPDATE Books SET Name = $1 WHERE Id = $2 RETURNING Id, Name", name, id).Scan(&book.Id, &book.Name)
+	if err != nil {
+		log.Printf("Failed to update book: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, "DELETE FROM AuthorToBook WHERE BookId = $1", id)
+	if err != nil {
+		log.Printf("Failed to delete old authors: %v", err)
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	for _, author := range authors {
+		_, err = tx.Exec(ctx, "INSERT INTO AuthorToBook (AuthorId, BookId) VALUES ($1, $2)", author.Id, book.Id)
+		if err != nil {
+			log.Printf("Failed to insert into AuthorToBook: %v", err)
+			_ = tx.Rollback(ctx)
+			return nil, err
+		}
+
+		book.Authors = append(book.Authors, author)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		return nil, err
+	}
+
+	return &book, nil
 }
 
 func (b BookPostgresRepository) ExistsById(id string) (bool, error) {

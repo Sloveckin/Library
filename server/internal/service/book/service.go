@@ -17,6 +17,8 @@ var (
 type Repository interface {
 	Create(name string, authors ...model.Author) (*model.Book, error)
 	Get(id string) (*model.Book, error)
+	GetByName(name string) (*model.Book, error)
+	Update(id, name string, authors ...model.Author) (*model.Book, error)
 	Delete(id string) error
 	ExistsById(id string) (bool, error)
 	ExistsByName(name string) (bool, error)
@@ -80,6 +82,50 @@ func (s *ServiceBookImpl) Delete(id string) error {
 	}
 
 	return nil
+}
+
+func (s *ServiceBookImpl) Update(id, name string, authors ...model.Author) (*model.Book, error) {
+	exists, err := s.ExistsById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		return nil, ErrBookNotFound
+	}
+
+	existByName, err := s.ExistByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if existByName {
+		bookWithName, err := s.repository.GetByName(name)
+		if err != nil {
+			return nil, err
+		}
+		if bookWithName != nil && bookWithName.Id != id {
+			return nil, ErrBookAlreadyExists
+		}
+	}
+
+	for _, author := range authors {
+		ok, err := s.authorService.ExistsById(author.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, ErrAuthorNotFound
+		}
+	}
+
+	updated, err := s.repository.Update(id, name, authors...)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (s *ServiceBookImpl) ExistsById(id string) (bool, error) {

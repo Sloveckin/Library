@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
-import { createAuthor, getAuthor, deleteAuthor } from '../services/authorService';
+import { createAuthor, getAuthor, deleteAuthor, updateAuthor } from '../services/authorService';
 
 function AuthorSection() {
   const [authorGetId, setGetAuthorId] = useState('');
   const [authorDeleteId, setDeleteAuthorId] = useState('');
   const [authorName, setAuthorName] = useState('');
+  const [authorUpdateId, setAuthorUpdateId] = useState('');
+  const [authorUpdateName, setAuthorUpdateName] = useState('');
 
   const handleCreateAuthor = async () => {
     try {
-      await createAuthor(authorName);
-      alert('Author created!');
+      const data = await createAuthor(authorName);
+      alert(`Author created! Id: ${data.id}`);
       setAuthorName('');
     } catch (err) {
       alert(`Create author failed: ${err.message}`);
+    }
+  };
+
+  const handleUpdateAuthor = async () => {
+    try {
+      await updateAuthor(authorUpdateId, authorUpdateName);
+      alert('Author updated!');
+      setAuthorUpdateId('');
+      setAuthorUpdateName('');
+    } catch (err) {
+      alert(`Update author failed: ${err.message}`);
     }
   };
 
@@ -71,6 +84,25 @@ function AuthorSection() {
           style={inputStyle}
         />
         <button onClick={handleDeleteAuthor} style={btnStyle('#fd7e14')}>Delete</button>
+      </div>
+
+      <div style={cardStyle('#ffeaa7', '#fd7e14')}>
+        <h3>Update author</h3>
+        <input
+          type="text"
+          placeholder="Id"
+          value={authorUpdateId}
+          onChange={(e) => setAuthorUpdateId(e.target.value)}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          placeholder="New name"
+          value={authorUpdateName}
+          onChange={(e) => setAuthorUpdateName(e.target.value)}
+          style={inputStyle}
+        />
+        <button onClick={handleUpdateAuthor} style={btnStyle('#fd7e14')}>Update</button>
       </div>
     </section>
   );

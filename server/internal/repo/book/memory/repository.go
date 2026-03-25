@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"Library/internal/model"
+
 	"github.com/google/uuid"
 )
 
@@ -67,6 +68,35 @@ func (repo *RepositoryImpl) ExistsByName(name string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (repo *RepositoryImpl) GetByName(name string) (*model.Book, error) {
+	repo.rw.Lock()
+	defer repo.rw.Unlock()
+
+	for _, book := range repo.data {
+		if book.Name == name {
+			return book, nil
+		}
+	}
+
+	return nil, ErrNoSuchBook
+}
+
+func (repo *RepositoryImpl) Update(id, name string, authors ...model.Author) (*model.Book, error) {
+	repo.rw.Lock()
+	defer repo.rw.Unlock()
+
+	b, ok := repo.data[id]
+	if !ok {
+		return nil, ErrNoSuchBook
+	}
+
+	b.Name = name
+	b.Authors = authors
+	repo.data[id] = b
+
+	return b, nil
 }
 
 func (repo *RepositoryImpl) Delete(id string) error {

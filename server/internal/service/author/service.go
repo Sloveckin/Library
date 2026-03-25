@@ -15,6 +15,8 @@ var (
 type AuthorRepository interface {
 	Create(name string) (*model.Author, error)
 	Get(id string) (*model.Author, error)
+	GetByName(name string) (*model.Author, error)
+	Update(id, name string) (*model.Author, error)
 	Delete(id string) error
 	ExistsById(id string) (bool, error)
 	ExistsByName(name string) (bool, error)
@@ -68,6 +70,42 @@ func (s *AuthorServiceImpl) Delete(id string) error {
 	}
 
 	return nil
+}
+
+func (s *AuthorServiceImpl) Update(id, name string) (*model.Author, error) {
+	exists, err := s.ExistsById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		return nil, ErrAuthorNotExists
+	}
+
+	// If name already exists and belongs to a different author -> error
+	existByName, err := s.ExistsByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if existByName {
+		// fetch author with that name to check id
+		authorWithName, err := s.authorRepository.GetByName(name)
+		if err != nil {
+			return nil, err
+		}
+
+		if authorWithName != nil && authorWithName.Id != id {
+			return nil, ErrAuthorExists
+		}
+	}
+
+	updated, err := s.authorRepository.Update(id, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (s *AuthorServiceImpl) ExistsByName(name string) (bool, error) {

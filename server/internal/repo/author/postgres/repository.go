@@ -110,3 +110,33 @@ func (a *AuthorRepositoryPostgres) ExistsByName(name string) (bool, error) {
 
 	return exists, nil
 }
+
+func (a *AuthorRepositoryPostgres) GetByName(name string) (*model.Author, error) {
+	var author model.Author
+
+	err := a.pool.QueryRow(context.Background(), "SELECT Id, Name FROM Authors WHERE Name = $1", name).
+		Scan(&author.Id, &author.Name)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNoSuchAuthor
+		}
+		return nil, err
+	}
+
+	return &author, nil
+}
+
+func (a *AuthorRepositoryPostgres) Update(id, name string) (*model.Author, error) {
+	var author model.Author
+
+	err := a.pool.QueryRow(context.Background(), "UPDATE Authors SET Name = $1 WHERE Id = $2 RETURNING Id, Name", name, id).
+		Scan(&author.Id, &author.Name)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNoSuchAuthor
+		}
+		return nil, err
+	}
+
+	return &author, nil
+}

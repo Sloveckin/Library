@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { createBook, getBook, deleteBook } from '../services/bookService';
+import { createBook, getBook, deleteBook, updateBook } from '../services/bookService';
 
 function BookSection({ sharedBookId, onSharedBookIdChange }) {
   const [getBookId, setGetBookId] = useState('');
   const [deleteBookId, setDeleteBookId] = useState('');
   const [bookName, setBookName] = useState('');
   const [bookAuthors, setBookAuthors] = useState('');
+  const [updateBookId, setUpdateBookId] = useState('');
+  const [updateBookName, setUpdateBookName] = useState('');
+  const [updateBookAuthors, setUpdateBookAuthors] = useState('');
 
   const handleGetBook = async () => {
     try {
@@ -19,8 +22,9 @@ function BookSection({ sharedBookId, onSharedBookIdChange }) {
   const handleCreateBook = async () => {
     try {
       const authorsList = bookAuthors.split(',').map(s => s.trim()).filter(Boolean);
-      await createBook(bookName, authorsList);
-      alert('Book created!');
+      const data = await createBook(bookName, authorsList);
+      alert(`Book created! Id: ${data.id}`);
+      onSharedBookIdChange(data.id);
       setBookName('');
       setBookAuthors('');
     } catch (err) {
@@ -36,6 +40,20 @@ function BookSection({ sharedBookId, onSharedBookIdChange }) {
       onSharedBookIdChange('');
     } catch (err) {
       alert(`Delete book failed: ${err.message}`);
+    }
+  };
+
+  const handleUpdateBook = async () => {
+    try {
+      const authorsList = updateBookAuthors.split(',').map(s => s.trim()).filter(Boolean);
+      await updateBook(updateBookId, updateBookName, authorsList);
+      alert('Book updated!');
+      setUpdateBookId('');
+      setUpdateBookName('');
+      setUpdateBookAuthors('');
+      onSharedBookIdChange('');
+    } catch (err) {
+      alert(`Update book failed: ${err.message}`);
     }
   };
 
@@ -84,10 +102,36 @@ function BookSection({ sharedBookId, onSharedBookIdChange }) {
           type="text"
           placeholder="Id"
           value={deleteBookId}
-          onChange={handleIdChange}
+          onChange={(e) => setDeleteBookId(e.target.value)}
           style={inputStyle}
         />
         <button onClick={handleDeleteBook} style={btnStyle('#28a745')}>Delete</button>
+      </div>
+
+      <div style={cardStyle('#d4edda', '#28a745')}>
+        <h3>Update book</h3>
+        <input
+          type="text"
+          placeholder="Id"
+          value={updateBookId || sharedBookId}
+          onChange={(e) => { setUpdateBookId(e.target.value); onSharedBookIdChange(e.target.value); }}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          placeholder="Name"
+          value={updateBookName}
+          onChange={(e) => setUpdateBookName(e.target.value)}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          placeholder="Authors (comma-separated)"
+          value={updateBookAuthors}
+          onChange={(e) => setUpdateBookAuthors(e.target.value)}
+          style={inputStyle}
+        />
+        <button onClick={handleUpdateBook} style={btnStyle('#28a745')}>Update</button>
       </div>
     </section>
   );
