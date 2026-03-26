@@ -3,9 +3,12 @@ on:
   push
 
 jobs:
-  Build-Server:
-    needs: [Test-Server]
-    runs-on: ubuntu-latest
+  build-server:
+    needs: [test-server]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -19,7 +22,7 @@ jobs:
         with:
             working-directory: server
 
-  Test-Server:
+  test-server:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -35,9 +38,12 @@ jobs:
         working-directory: server
         run: go test ./internal/service/author/
 
-  Build-Client:
-    needs: [Test-Client]
-    runs-on: ubuntu-latest
+  build-client:
+    needs: [test-client]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{matrix.os}}
     defaults:
       run:
         working-directory: devops-client-app 
@@ -53,9 +59,12 @@ jobs:
       - name: build
         run: npm run build
         
-  Test-Client:
-    needs: [Build-Server]
-    runs-on: ubuntu-latest
+  test-client:
+    needs: [build-server]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{matrix.os}}
     defaults:
       run:
         working-directory: devops-client-app 
