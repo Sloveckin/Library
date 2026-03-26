@@ -54,6 +54,7 @@ jobs:
         run: npm run build
         
   Test-Client:
+    needs: [Build-Server]
     runs-on: ubuntu-latest
     defaults:
       run:
