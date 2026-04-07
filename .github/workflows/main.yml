@@ -2,13 +2,13 @@ name: main.yml
 on:
   push
 
+env:
+  REGISTRY: ${{ secrets.YC_REGISTRY }}
+  
 jobs:
   build-server:
     needs: [test-server]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -23,10 +23,7 @@ jobs:
             working-directory: server
 
   test-server:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -40,10 +37,7 @@ jobs:
 
   build-client:
     needs: [test-client]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: devops-client-app 
@@ -60,11 +54,8 @@ jobs:
         run: npm run build
         
   test-client:
-    needs: [build-server]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{matrix.os}}
+    needs: [build-server-docker]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: devops-client-app 
@@ -79,3 +70,23 @@ jobs:
         run: npm install
       - name: test
         run: npm test -- --coverage --watchAll=false
+    
+  build-server-docker:
+    needs: [build-server]
+    runs-on: ubuntu-latest
+    steps:
+      - name: build
+        run: docker build -t $REGISTRY/server:latest ./server
+
+      - name: push
+        run: docker push $REGISTRY/server:latest
+  
+  build-client-docker:
+    needs: [build-client]
+    runs-on: ubuntu-latest
+    steps:
+      - name: build
+        run: docker build -t $REGISTRY/client:latest ./devops-client-app
+
+      - name: push
+        run: docker push $REGISTRY/client:latest

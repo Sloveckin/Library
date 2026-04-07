@@ -47,8 +47,8 @@ func Update(service UpdateService) http.HandlerFunc {
 		name := strings.TrimSpace(req.Name)
 		author, err := service.Update(req.Id, name)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, v.Error("Автор не найден"))
 			return
 		}
 

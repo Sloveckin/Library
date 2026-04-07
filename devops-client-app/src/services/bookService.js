@@ -19,3 +19,7 @@ export const updateBook = (id, name, authors) => request('/book/update', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ id, name, authors }),
 });
+
+export const getAllBooks = () => request('/book/all', {
+  method: 'GET',
+});

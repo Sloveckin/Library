@@ -30,8 +30,14 @@ func Get(service GetService) http.HandlerFunc {
 
 		author, err := service.Get(id)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, v.Error("Автор не найден"))
+			return
+		}
+
+		if author == nil {
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, v.Error("Автор не найден"))
 			return
 		}
 

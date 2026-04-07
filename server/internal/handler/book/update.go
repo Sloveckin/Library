@@ -37,6 +37,13 @@ func Update(service UpdateService) http.HandlerFunc {
 			return
 		}
 
+		if req.Id == "" {
+			log.Println("Validation error: Id is required")
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, v.Error("Id is required"))
+			return
+		}
+
 		validate := validator.New()
 		err = validate.Struct(req)
 		if err != nil {
@@ -54,9 +61,8 @@ func Update(service UpdateService) http.HandlerFunc {
 
 		book, err := service.Update(req.Id, name, authors...)
 		if err != nil {
-			log.Println("Error while service request:", err)
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, v.Error("Книга не найдена"))
 			return
 		}
 

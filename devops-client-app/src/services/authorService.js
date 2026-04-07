@@ -19,3 +19,7 @@ export const updateAuthor = (id, name) => request('/author/update', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ id, name }),
 });
+
+export const getAllAuthors = () => request('/author/all', {
+  method: 'GET',
+});

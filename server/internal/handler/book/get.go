@@ -32,8 +32,8 @@ func Get(service getService) http.HandlerFunc {
 
 		book, err := service.Get(id)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, v.Error(err.Error()))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, v.Error("Книга не найдена"))
 			return
 		}
 
