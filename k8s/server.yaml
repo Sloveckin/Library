@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      containers:
+        - name: server
+          image: IMAGE_SERVER_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: "1234"
+            - name: DB_NAME
+              value: library
+            - name: ENV
+              value: prod
+            - name: STORAGE_URL
+              value: postgresql://postgres:1234@db:5432/library
+            - name: HTTP_SERVER_ADDRESS
+              value: 0.0.0.0:8080
+      imagePullSecrets:
+        - name: yandex-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+spec:
+  selector:
+    app: server
+  ports:
+    - port: 8080
+      targetPort: 8080

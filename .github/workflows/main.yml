@@ -110,3 +110,31 @@ jobs:
 
       - name: push
         run: docker push $REGISTRY/client:latest
+
+  deploy-k8s:
+    needs: [build-client-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.27.0'
+
+      - name: login to Yandex Container Registry
+        run: |
+          echo "${{ secrets.YC_IAM_TOKEN }}" | docker login cr.yandex -u iam -p- 
+
+      - name: replace placeholders in YAML
+        run: |
+          sed -i "s|IMAGE_SERVER_PLACEHOLDER|cr.yandex/${{ secrets.YC_REGISTRY_ID }}/server:latest|g" k8s/server.yaml
+          sed -i "s|IMAGE_CLIENT_PLACEHOLDER|cr.yandex/${{ secrets.YC_REGISTRY_ID }}/client:latest|g" k8s/client.yaml
+
+      - name: apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/db.yaml
+          kubectl apply -f k8s/server.yaml
+          kubectl apply -f k8s/client.yaml
+          kubectl apply -f k8s/nginx.yaml

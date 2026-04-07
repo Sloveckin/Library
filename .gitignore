@@ -1,2 +1,5 @@
 app
 .idea/
+terraform/terraform.*
+terraform/variables.tf
+ansible/inventory.ini
