@@ -72,19 +72,39 @@ jobs:
         run: npm test -- --coverage --watchAll=false
     
   build-server-docker:
-    needs: [build-server]
-    runs-on: ubuntu-latest
-    steps:
-      - name: build
-        run: docker build -t $REGISTRY/server:latest ./server
+      needs: [build-server]
+      runs-on: ubuntu-latest
 
-      - name: push
-        run: docker push $REGISTRY/server:latest
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: login
+          run: |
+            docker login \
+              --username oauth \
+              --password ${{ secrets.YC_TOKEN }} \
+              cr.yandex
+
+        - name: build
+          run: docker build -t $REGISTRY/server:latest ./server
+
+        - name: push
+          run: docker push $REGISTRY/server:latest
   
   build-client-docker:
     needs: [build-client]
     runs-on: ubuntu-latest
+
     steps:
+      - uses: actions/checkout@v4
+
+      - name: login
+        run: |
+          docker login \
+            --username oauth \
+            --password ${{ secrets.YC_TOKEN }} \
+            cr.yandex
+
       - name: build
         run: docker build -t $REGISTRY/client:latest ./devops-client-app
 
