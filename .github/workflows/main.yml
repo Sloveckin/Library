@@ -123,7 +123,7 @@ jobs:
 
       - name: Login to Yandex Container Registry
         run: |
-          echo "${{ secrets.YC_IAM_TOKEN }}" | docker login cr.yandex -u iam -p- 
+          echo "${{ secrets.YC_TOKEN }}" | docker login cr.yandex -u iam -p- 
 
       - name: Replace placeholders in YAML
         run: |
