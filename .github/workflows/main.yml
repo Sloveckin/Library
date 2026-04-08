@@ -139,11 +139,10 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
-            docker login --username oauth --password ${{ secrets.YC_TOKEN }} cr.yandex
+            rm -f ~/.docker/config.json
 
-            cd ~/app
+            echo "${{ secrets.YC_TOKEN }}" | docker login --username oauth --password-stdin cr.yandex
 
-            kubectl apply -f db.yaml
-            kubectl apply -f server.yaml
-            kubectl apply -f client.yaml
-            kubectl apply -f nginx.yaml
+            cd ~/app/k8s
+
+            kubectl apply -f .
