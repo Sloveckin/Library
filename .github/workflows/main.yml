@@ -114,25 +114,36 @@ jobs:
   deploy-k8s:
     needs: [build-client-docker]
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-
-      - name: Login to Yandex Container Registry
-        run: |
-          docker login --username oauth --password ${{ secrets.YC_TOKEN }} cr.yandex
+      - uses: actions/checkout@v4
 
       - name: Replace placeholders in YAML
         run: |
           sed -i "s|IMAGE_SERVER_PLACEHOLDER|cr.yandex/${{ secrets.YC_REGISTRY_ID }}/server:latest|g" k8s/server.yaml
           sed -i "s|IMAGE_CLIENT_PLACEHOLDER|cr.yandex/${{ secrets.YC_REGISTRY_ID }}/client:latest|g" k8s/client.yaml
 
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/db.yaml
-          kubectl apply -f k8s/server.yaml
-          kubectl apply -f k8s/client.yaml
-          kubectl apply -f k8s/nginx.yaml
+      - name: Copy files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "k8s/*"
+          target: "~/app/"
+
+      - name: Deploy on VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            docker login --username oauth --password ${{ secrets.YC_TOKEN }} cr.yandex
+
+            cd ~/app
+
+            kubectl apply -f db.yaml
+            kubectl apply -f server.yaml
+            kubectl apply -f client.yaml
+            kubectl apply -f nginx.yaml

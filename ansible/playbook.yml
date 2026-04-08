@@ -1,12 +1,15 @@
 - hosts: vm
   become: yes
 
+  vars:
+    user_name: ubuntu
+
   tasks:
     - name: Update apt
       apt:
         update_cache: yes
 
-    - name: Install dependencies
+    - name: Install base dependencies
       apt:
         name:
           - apt-transport-https
@@ -14,6 +17,9 @@
           - curl
           - gnupg
           - lsb-release
+          - conntrack
+          - socat
+        state: present
 
     - name: Install Docker
       apt:
@@ -21,25 +27,35 @@
         state: present
 
     - name: Enable Docker
-      service:
+      systemd:
         name: docker
         state: started
         enabled: true
 
-    - name: Install docker-compose
-      apt:
-        name: docker-compose
-        state: present
-
     - name: Add user to docker group
       user:
-        name: ubuntu
+        name: "{{ user_name }}"
         groups: docker
         append: yes
-    
+
     - name: Install kubectl
-      become: yes
       get_url:
-        url: https://storage.googleapis.com/kubernetes-release/release/v1.29.0/bin/linux/amd64/kubectl
+        url: https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl
         dest: /usr/local/bin/kubectl
         mode: '0755'
+
+    - name: Install Minikube
+      get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+
+    # ВАЖНО: запуск от НЕ root
+    - name: Start Minikube as ubuntu user
+      become: no
+      become_user: "{{ user_name }}"
+      environment:
+        CHANGE_MINIKUBE_NONE_USER: "true"
+      command: minikube start --driver=docker
+      args:
+        creates: "/home/{{ user_name }}/.minikube"
