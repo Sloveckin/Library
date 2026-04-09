@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k6-load
+spec:
+  containers:
+    - name: k6
+      image: grafana/k6:latest
+      command: ["sleep", "3600"] # чтобы pod просто жил и мы могли exec
+  restartPolicy: Never
