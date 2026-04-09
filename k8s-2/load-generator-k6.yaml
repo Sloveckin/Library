@@ -6,5 +6,5 @@ spec:
   containers:
     - name: k6
       image: grafana/k6:latest
-      command: ["sleep", "3600"] # чтобы pod просто жил и мы могли exec
+      command: ["sleep", "36000"] 
   restartPolicy: Never
