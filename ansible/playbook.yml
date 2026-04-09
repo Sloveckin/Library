@@ -50,12 +50,11 @@
         dest: /usr/local/bin/minikube
         mode: '0755'
 
-    # ВАЖНО: запуск от НЕ root
     - name: Start Minikube as ubuntu user
       become: no
       become_user: "{{ user_name }}"
       environment:
         CHANGE_MINIKUBE_NONE_USER: "true"
-      command: minikube start --driver=docker
+      command: minikube start
       args:
         creates: "/home/{{ user_name }}/.minikube"
