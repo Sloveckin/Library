@@ -13,9 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Setup Java (required for sonar scanner)
         uses: actions/setup-java@v4
-          with:
-            distribution: 'temurin'
-            java-version: '17'
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install SonarScanner
           run: |
             curl -sSLo sonar.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
