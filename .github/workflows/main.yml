@@ -39,7 +39,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         timeout-minutes: 5
   build-server:
-    needs: [solar-analysis]
+    needs: [sonar-analysis]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -68,7 +68,7 @@ jobs:
         run: go test ./internal/service/author/
 
   build-client:
-    needs: [solar-analysis]
+    needs: [sonar-analysis]
     runs-on: ubuntu-latest
     defaults:
       run:
