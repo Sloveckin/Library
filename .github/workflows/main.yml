@@ -80,7 +80,7 @@ jobs:
           go-version: '1.25'
       - name: Test
         working-directory: server
-        run: go test ./internal/service/author/ -coverprofile=coverage.out
+        run: go test ./... -coverprofile=coverage.out
 
   build-client:
     needs: [build-server]
