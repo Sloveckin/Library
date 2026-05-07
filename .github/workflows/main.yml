@@ -30,6 +30,7 @@ jobs:
         run: |
           cd server
           go test ./... -coverprofile=coverage.out
+          ls -lah coverage.out
 
       - name: Setup Node
         uses: actions/setup-node@v4
