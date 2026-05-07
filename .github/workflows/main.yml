@@ -28,11 +28,13 @@ jobs:
       - name: Run SonarQube scan
         run: |
           sonar-scanner \
+            -Dsonar.qualitygate.wait=true \
             -Dsonar.projectKey=library-app \
             -Dsonar.sources=. \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.javascript.lcov.reportPaths=devops-client-app/coverage/lcov.info,server/coverage/lcov.info
+            -Dsonar.go.coverage.reportPaths=server/coverage.out \
+            -Dsonar.javascript.lcov.reportPaths=devops-client-app/coverage/lcov.info 
       - name: Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
         env:
@@ -65,7 +67,7 @@ jobs:
           go-version: '1.25'
       - name: Test
         working-directory: server
-        run: go test ./internal/service/author/
+        run: go test ./internal/service/author/ -coverprofile=coverage.out
 
   build-client:
     needs: [build-server]
@@ -124,7 +126,7 @@ jobs:
           run: docker push $REGISTRY/server:latest
   
   build-client-docker:
-    needs: [build-server]
+    needs: [build-client]
     runs-on: ubuntu-latest
 
     steps:
