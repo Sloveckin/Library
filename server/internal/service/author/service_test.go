@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
+	"errors"
 )
 
 func TestAuthorServiceImpl_Create(t *testing.T) {
@@ -240,6 +241,163 @@ func TestAuthorServiceImpl_Get(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Get() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthorServiceImpl_Update(t *testing.T) {
+
+	type args struct {
+		id   string
+		name string
+	}
+
+	tests := []struct {
+		name        string
+		args        args
+		setupMock   func(repo *mocks.AuthorRepository)
+		want        *model.Author
+		wantErr     bool
+		expectedErr error
+	}{
+		{
+			name: "success update",
+			args: args{
+				id:   "1",
+				name: "NewName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(true, nil)
+				repo.On("ExistsByName", "NewName").Return(false, nil)
+				repo.On("Update", "1", "NewName").
+					Return(&model.Author{Id: "1", Name: "NewName"}, nil)
+			},
+			want: &model.Author{
+				Id:   "1",
+				Name: "NewName",
+			},
+			wantErr: false,
+		},
+		{
+			name: "author not exists by id",
+			args: args{
+				id:   "1",
+				name: "NewName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(false, nil)
+			},
+			wantErr:     true,
+			expectedErr: ErrAuthorNotExists,
+		},
+		{
+			name: "error from ExistsById",
+			args: args{
+				id:   "1",
+				name: "NewName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(false, errors.New("db error"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "error from ExistsByName",
+			args: args{
+				id:   "1",
+				name: "NewName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(true, nil)
+				repo.On("ExistsByName", "NewName").Return(false, errors.New("db error"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "name already exists for another author",
+			args: args{
+				id:   "1",
+				name: "ExistingName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(true, nil)
+				repo.On("ExistsByName", "ExistingName").Return(true, nil)
+				repo.On("GetByName", "ExistingName").
+					Return(&model.Author{Id: "2", Name: "ExistingName"}, nil)
+			},
+			wantErr:     true,
+			expectedErr: ErrAuthorExists,
+		},
+		{
+			name: "error from GetByName",
+			args: args{
+				id:   "1",
+				name: "ExistingName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(true, nil)
+				repo.On("ExistsByName", "ExistingName").Return(true, nil)
+				repo.On("GetByName", "ExistingName").
+					Return(nil, errors.New("db error"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "same author updates same name",
+			args: args{
+				id:   "1",
+				name: "SameName",
+			},
+			setupMock: func(repo *mocks.AuthorRepository) {
+				repo.On("ExistsById", "1").Return(true, nil)
+				repo.On("ExistsByName", "SameName").Return(true, nil)
+				repo.On("GetByName", "SameName").
+					Return(&model.Author{Id: "1", Name: "SameName"}, nil)
+
+				repo.On("Update", "1", "SameName").
+					Return(&model.Author{Id: "1", Name: "SameName"}, nil)
+			},
+			want: &model.Author{
+				Id:   "1",
+				Name: "SameName",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			mockRepo := mocks.NewAuthorRepository(t)
+
+			if tt.setupMock != nil {
+				tt.setupMock(mockRepo)
+			}
+
+			s := &AuthorServiceImpl{
+				authorRepository: mockRepo,
+			}
+
+			got, err := s.Update(tt.args.id, tt.args.name)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error, got nil")
+				}
+				if tt.expectedErr != nil && err != tt.expectedErr {
+					t.Errorf("expected err %v, got %v", tt.expectedErr, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Update() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
