@@ -13,8 +13,13 @@ import (
 
 var ErrNoSuchAuthor = errors.New("no such author")
 
+type pgxPool interface {
+    Begin(ctx context.Context) (pgx.Tx, error)
+    QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 type AuthorRepositoryPostgres struct {
-	pool *pgxpool.Pool
+    pool pgxPool
 }
 
 func NewAuthorRepositoryPostgres(connectionString string) (*AuthorRepositoryPostgres, error) {
