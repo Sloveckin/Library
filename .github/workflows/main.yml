@@ -6,8 +6,40 @@ env:
   REGISTRY: ${{ secrets.YC_REGISTRY }}
   
 jobs:
+  sonar-analysis:
+    runs-on: ubuntu-latest
+    needs: [test-server, test-client]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java (required for sonar scanner)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install SonarScanner
+        run: |
+          curl -sSLo sonar.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+          unzip sonar.zip
+          echo "$PWD/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
+
+      - name: Run SonarQube scan
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=library-app \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.javascript.lcov.reportPaths=devops-client-app/coverage/lcov.info,server/coverage/lcov.info
+      - name: Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        timeout-minutes: 5
   build-server:
-    needs: [test-server]
+    needs: [solar-analysis]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,7 +68,7 @@ jobs:
         run: go test ./internal/service/author/
 
   build-client:
-    needs: [test-client]
+    needs: [solar-analysis]
     runs-on: ubuntu-latest
     defaults:
       run:
