@@ -7,7 +7,6 @@ env:
   
 jobs:
   sonar-analysis:
-    needs: [test-client]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
