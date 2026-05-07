@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	"Library/internal/model"
+	"server/internal/model"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

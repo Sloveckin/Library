@@ -1,8 +1,8 @@
 package book
 
 import (
-	v "Library/internal/handler"
-	"Library/internal/model"
+	v "server/internal/handler"
+	"server/internal/model"
 	"log"
 	"net/http"
 

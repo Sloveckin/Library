@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"Library/internal/model"
+	"server/internal/model"
 )
 
 var (

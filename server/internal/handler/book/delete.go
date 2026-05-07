@@ -1,7 +1,7 @@
 package book
 
 import (
-	v "Library/internal/handler"
+	v "server/internal/handler"
 	"net/http"
 
 	"github.com/go-chi/render"

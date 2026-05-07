@@ -1,8 +1,8 @@
 package author
 
 import (
-	v "Library/internal/handler"
-	"Library/internal/model"
+	v "server/internal/handler"
+	"server/internal/model"
 	"net/http"
 
 	"github.com/go-chi/render"

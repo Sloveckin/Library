@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"Library/internal/model"
+	"server/internal/model"
 	"context"
 	"log"
 

@@ -3,7 +3,7 @@ package service_author
 import (
 	"errors"
 
-	"Library/internal/model"
+	"server/internal/model"
 )
 
 var (

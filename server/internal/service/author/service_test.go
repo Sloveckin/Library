@@ -1,8 +1,8 @@
 package service_author
 
 import (
-	"Library/internal/model"
-	"Library/internal/service/author/mocks"
+	"server/internal/model"
+	"server/internal/service/author/mocks"
 	"reflect"
 	"testing"
 

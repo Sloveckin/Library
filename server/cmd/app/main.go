@@ -1,13 +1,13 @@
 package main
 
 import (
-	"Library/internal/config"
-	"Library/internal/handler/author"
-	"Library/internal/handler/book"
-	authorRepo "Library/internal/repo/author/postgres"
-	bookRepo "Library/internal/repo/book/postgresql"
-	serviceauthor "Library/internal/service/author"
-	servicebook "Library/internal/service/book"
+	"server/internal/config"
+	"server/internal/handler/author"
+	"server/internal/handler/book"
+	authorRepo "server/internal/repo/author/postgres"
+	bookRepo "server/internal/repo/book/postgresql"
+	serviceauthor "server/internal/service/author"
+	servicebook "server/internal/service/book"
 	"fmt"
 	"net/http"
 	"os"

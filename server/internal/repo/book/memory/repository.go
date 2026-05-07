@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"Library/internal/model"
+	"server/internal/model"
 
 	"github.com/google/uuid"
 )
