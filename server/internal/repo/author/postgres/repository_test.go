@@ -3,7 +3,6 @@ package postgres
 import (
 	"errors"
 	"regexp"
-	"server/internal/model"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -18,8 +17,6 @@ func newMockAuthorRepo(t *testing.T) (*AuthorRepositoryPostgres, pgxmock.PgxPool
 	}
 	return &AuthorRepositoryPostgres{pool: mock}, mock
 }
-
-var testAuthorModel = model.Author{Id: "a1", Name: "Author One"}
 
 // ── Create ────────────────────────────────────────────────────────────────────
 

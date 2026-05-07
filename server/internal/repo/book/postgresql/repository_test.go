@@ -19,7 +19,6 @@ func newMockRepo(t *testing.T) (*BookPostgresRepository, pgxmock.PgxPoolIface) {
 }
 
 var testAuthor = model.Author{Id: "a1", Name: "Author One"}
-var testBook = model.Book{Id: "b1", Name: "Book One", Authors: []model.Author{testAuthor}}
 
 // ── Create ────────────────────────────────────────────────────────────────────
 

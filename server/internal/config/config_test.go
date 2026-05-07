@@ -7,11 +7,21 @@ import (
 )
 
 func TestMustLoad(t *testing.T) {
-	os.Setenv("ENV", "test")
-	os.Setenv("STORAGE_URL", "postgres://localhost")
-	os.Setenv("HTTP_SERVER_ADDRESS", "localhost:8080")
-	os.Setenv("HTTP_SERVER_TIMEOUT", "10s")
-	os.Setenv("HTTP_SERVER_IDLE_TIMEOUT", "5s")
+	if err := os.Setenv("ENV", "test"); err != nil {
+    	t.Fatalf("setenv ENV: %v", err)
+	}
+	if err := os.Setenv("STORAGE_URL", "postgres://localhost"); err != nil {
+		t.Fatalf("setenv STORAGE_URL: %v", err)
+	}
+	if err := os.Setenv("HTTP_SERVER_ADDRESS", "localhost:8080"); err != nil {
+		t.Fatalf("setenv HTTP_SERVER_ADDRESS: %v", err)
+	}
+	if err := os.Setenv("HTTP_SERVER_TIMEOUT", "10s"); err != nil {
+		t.Fatalf("setenv HTTP_SERVER_TIMEOUT: %v", err)
+	}
+	if err := os.Setenv("HTTP_SERVER_IDLE_TIMEOUT", "5s"); err != nil {
+		t.Fatalf("setenv HTTP_SERVER_IDLE_TIMEOUT: %v", err)
+	}
 
 	config := MustLoad()
 
@@ -31,9 +41,19 @@ func TestMustLoad(t *testing.T) {
 		t.Errorf("Expected idle timeout 5s, got %v", config.HttpServer.IdleTimeout)
 	}
 
-	os.Unsetenv("ENV")
-	os.Unsetenv("STORAGE_URL")
-	os.Unsetenv("HTTP_SERVER_ADDRESS")
-	os.Unsetenv("HTTP_SERVER_TIMEOUT")
-	os.Unsetenv("HTTP_SERVER_IDLE_TIMEOUT")
+	if err := os.Unsetenv("ENV"); err != nil {
+    	t.Fatalf("unset ENV: %v", err)
+	}
+	if err := os.Unsetenv("STORAGE_URL"); err != nil {
+		t.Fatalf("unset STORAGE_URL: %v", err)
+	}
+	if err := os.Unsetenv("HTTP_SERVER_ADDRESS"); err != nil {
+		t.Fatalf("unset HTTP_SERVER_ADDRESS: %v", err)
+	}
+	if err := os.Unsetenv("HTTP_SERVER_TIMEOUT"); err != nil {
+		t.Fatalf("unset HTTP_SERVER_TIMEOUT: %v", err)
+	}
+	if err := os.Unsetenv("HTTP_SERVER_IDLE_TIMEOUT"); err != nil {
+		t.Fatalf("unset HTTP_SERVER_IDLE_TIMEOUT: %v", err)
+	}
 }

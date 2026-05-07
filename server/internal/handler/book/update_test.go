@@ -43,7 +43,9 @@ func TestUpdateSuccess(t *testing.T) {
 	}
 
 	var resp updateResponse
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+    	t.Fatalf("decode response: %v", err)
+	}
 	if resp.Id != "1" {
 		t.Errorf("Expected ID '1', got %s", resp.Id)
 	}
