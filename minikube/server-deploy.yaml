@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      imagePullSecrets:
+        - name: yc-registry-secret
+      containers:
+        - name: server
+          image: cr.yandex/crpiegiuj22g2courr8t/server:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          env:
+            - name: DB_HOST
+              value: db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: "1234"
+            - name: DB_NAME
+              value: library
+            - name: STORAGE_URL
+              value: "postgres://postgres:1234@db:5432/library?sslmode=disable"
+            - name: HTTP_SERVER_ADDRESS
+              value: 0.0.0.0:8080
+            - name: HTTP_SERVER_TIMEOUT
+              value: "10s"
+            - name: HTTP_SERVER_IDLE_TIMEOUT
+              value: "30s"
+          command: ["./main"]
+          args: ["--db-tcp"]
