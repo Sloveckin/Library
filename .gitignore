@@ -5,3 +5,4 @@ terraform/variables.tf
 ansible/inventory.ini
 server/coverage.out
 server/bin/
+devops-key

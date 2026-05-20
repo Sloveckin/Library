@@ -1,26 +1,35 @@
 name: main.yml
+
 on:
-  push
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 env:
   REGISTRY: ${{ secrets.YC_REGISTRY }}
-  
+
 jobs:
   sonar-analysis:
     needs: [test-client]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Java (required for sonar scanner)
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
       - name: Install SonarScanner
         run: |
           curl -sSLo sonar.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
           unzip sonar.zip
           echo "$PWD/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -30,7 +39,6 @@ jobs:
         run: |
           cd server
           go test ./... -coverprofile=coverage.out
-          ls -lah coverage.out
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -53,95 +61,63 @@ jobs:
             -Dsonar.go.coverage.reportPaths=server/coverage.out \
             -Dsonar.javascript.lcov.reportPaths=devops-client-app/coverage/lcov.info \
             -Dsonar.qualitygate.wait=true
-  build-server:
-    needs: [sonar-analysis]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up go
-        uses: actions/setup-go@v6
-        with:
-            working-directory: server
-            go-version: '1.25'
-      - name: Golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-            working-directory: server
 
   test-server:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up go
-        uses: actions/setup-go@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25'
       - name: Test
         working-directory: server
         run: go test ./... -coverprofile=coverage.out
 
-  build-client:
-    needs: [build-server]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: devops-client-app 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Build
-        run: npm run build
-        
   test-client:
     needs: [test-server]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: devops-client-app 
+        working-directory: devops-client-app
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
       - name: Test
         run: npm test -- --coverage --watchAll=false
-    
+
+  build-server:
+    needs: [sonar-analysis]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: server
+
+  build-client:
+    needs: [build-server]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops-client-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run build
+
   build-server-docker:
-      needs: [build-client-docker]
-      runs-on: ubuntu-latest
-
-      steps:
-        - uses: actions/checkout@v4
-
-        - name: Login
-          run: |
-            docker login \
-              --username oauth \
-              --password ${{ secrets.YC_TOKEN }} \
-              cr.yandex
-
-        - name: Build
-          run: docker build -t $REGISTRY/server:latest ./server
-
-        - name: Push
-          run: docker push $REGISTRY/server:latest
-  
-  build-client-docker:
     needs: [build-client]
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -152,11 +128,56 @@ jobs:
             --password ${{ secrets.YC_TOKEN }} \
             cr.yandex
 
-      - name: Build
-        run: docker build -t $REGISTRY/client:latest ./devops-client-app
+      - name: Build server image
+        run: docker build -t $REGISTRY/server:${{ github.sha }} ./server
 
-      - name: Push
-        run: docker push $REGISTRY/client:latest
+      - name: Push server image
+        run: docker push $REGISTRY/server:${{ github.sha }}
+
+  build-client-docker:
+    needs: [build-client]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login
+        run: |
+          docker login \
+            --username oauth \
+            --password ${{ secrets.YC_TOKEN }} \
+            cr.yandex
+
+      - name: Build client image
+        run: docker build -t $REGISTRY/client:${{ github.sha }} ./devops-client-app
+
+      - name: Push client image
+        run: docker push $REGISTRY/client:${{ github.sha }}
+
+  update-manifests:
+    needs:
+      - build-server-docker
+      - build-client-docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update image tags in manifests
+        run: |
+          sed -i "s|image: cr.yandex/crpiegiuj22g2courr8t/server:.*|image: $REGISTRY/server:${{ github.sha }}|" minikube/server-deploy.yaml
+          sed -i "s|image: cr.yandex/crpiegiuj22g2courr8t/client:.*|image: $REGISTRY/client:${{ github.sha }}|" minikube/client-deploy.yaml
+
+      - name: Commit and push manifest changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add minikube/server-deploy.yaml minikube/client-deploy.yaml
+
+          git diff --cached --quiet && exit 0
+
+          git commit -m "Update image tags to ${{ github.sha }}"
+          git push
 
   notify:
     runs-on: ubuntu-latest
@@ -166,7 +187,7 @@ jobs:
       - build-client
       - build-server-docker
       - build-client-docker
-
+      - update-manifests
     if: always()
 
     steps:
@@ -176,8 +197,8 @@ jobs:
                 "${{ needs.build-server.result }}" == "success" && \
                 "${{ needs.build-client.result }}" == "success" && \
                 "${{ needs.build-server-docker.result }}" == "success" && \
-                "${{ needs.build-client-docker.result }}" == "success" ]]; then
-
+                "${{ needs.build-client-docker.result }}" == "success" && \
+                "${{ needs.update-manifests.result }}" == "success" ]]; then
             STATUS="SUCCESS"
           else
             STATUS="FAILED"
