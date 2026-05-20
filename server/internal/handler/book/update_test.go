@@ -11,6 +11,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	updateBookPath     = "/book/update"
+	expectedUpdateBookStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockUpdateService struct {
 	updateFunc func(id, name string, authors ...model.Author) (*model.Book, error)
 }
@@ -32,14 +37,14 @@ func TestUpdateSuccess(t *testing.T) {
 		Authors: []string{"1", "2"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/book/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedUpdateBookStatusMsg, http.StatusCreated, w.Code)
 	}
 
 	var resp updateResponse
@@ -58,14 +63,14 @@ func TestUpdateDecodeError(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("PUT", "/book/update", bytes.NewReader([]byte("invalid")))
+	httpReq := httptest.NewRequest("PUT", updateBookPath, bytes.NewReader([]byte("invalid")))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedUpdateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -82,14 +87,14 @@ func TestUpdateEmptyId(t *testing.T) {
 		Authors: []string{"1"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/book/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedUpdateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -106,14 +111,14 @@ func TestUpdateValidationError(t *testing.T) {
 		Authors: []string{},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/book/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedUpdateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -130,13 +135,13 @@ func TestUpdateServiceError(t *testing.T) {
 		Authors: []string{"1"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/book/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
-	}
+		t.Errorf(expectedUpdateBookStatusMsg, http.StatusNotFound, w.Code)
+}
 }

@@ -9,6 +9,8 @@ import (
 	"server/internal/model"
 )
 
+const expectedGetBookStatusMsg = "Expected status %d, got %d"
+
 type mockGetService struct {
 	getFunc func(id string) (*model.Book, error)
 }
@@ -37,7 +39,7 @@ func TestGetSuccess(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedGetBookStatusMsg, http.StatusCreated, w.Code)
 	}
 }
 
@@ -55,7 +57,7 @@ func TestGetMissingId(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedGetBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -73,6 +75,6 @@ func TestGetServiceError(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
-	}
+		t.Errorf(expectedGetBookStatusMsg, http.StatusNotFound, w.Code)
+}
 }

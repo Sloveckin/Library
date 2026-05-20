@@ -1,13 +1,20 @@
 package postgres
 
 import (
-	"server/internal/model"
 	"context"
 	"log"
+	"server/internal/model"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	logBeginTxFailed   = "Failed to begin transaction: %v"
+	logRollbackFailed  = "Failed to rollback transaction: %v"
+	logQueryBookFailed = "Failed to query book: %v"
+	logCommitTxFailed  = "Failed to commit transaction: %v"
 )
 
 type pgxPool interface {
@@ -35,13 +42,13 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
+		log.Printf(logBeginTxFailed, err)
 		return nil, err
 	}
 
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf("Failed to rollback transaction: %v", err)
+			log.Printf(logRollbackFailed, err)
 		}
 	}()
 
@@ -50,7 +57,7 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 
 	err = tx.QueryRow(ctx, "INSERT INTO Books (Name) VALUES ($1) RETURNING Id, Name", name).Scan(&book.Id, &book.Name)
 	if err != nil {
-		log.Printf("Failed to query book: %v", err)
+		log.Printf(logQueryBookFailed, err)
 		_ = tx.Rollback(ctx)
 		return nil, err
 	}
@@ -67,7 +74,7 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 	book.Authors = append(book.Authors, authors...)
 
 	if err = tx.Commit(ctx); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
+		log.Printf(logCommitTxFailed, err)
 		return nil, err
 	}
 
@@ -79,20 +86,20 @@ func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
+		log.Printf(logBeginTxFailed, err)
 		return nil, err
 	}
 
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf("Failed to rollback transaction: %v", err)
+			log.Printf(logRollbackFailed, err)
 		}
 	}()
 
 	var book model.Book
 	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Id = $1", id).Scan(&book.Id, &book.Name)
 	if err != nil {
-		log.Printf("Failed to query book: %v", err)
+		log.Printf(logQueryBookFailed, err)
 		_ = tx.Rollback(ctx)
 		return nil, err
 	}
@@ -125,7 +132,7 @@ func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
+		log.Printf(logCommitTxFailed, err)
 		return nil, err
 	}
 
@@ -137,20 +144,20 @@ func (b BookPostgresRepository) GetByName(name string) (*model.Book, error) {
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
+		log.Printf(logBeginTxFailed, err)
 		return nil, err
 	}
 
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf("Failed to rollback transaction: %v", err)
+			log.Printf(logRollbackFailed, err)
 		}
 	}()
 
 	var book model.Book
 	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Name = $1", name).Scan(&book.Id, &book.Name)
 	if err != nil {
-		log.Printf("Failed to query book: %v", err)
+		log.Printf(logQueryBookFailed, err)
 		_ = tx.Rollback(ctx)
 		return nil, err
 	}
@@ -183,7 +190,7 @@ func (b BookPostgresRepository) GetByName(name string) (*model.Book, error) {
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
+		log.Printf(logCommitTxFailed, err)
 		return nil, err
 	}
 
@@ -195,13 +202,13 @@ func (b BookPostgresRepository) Delete(id string) error {
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
+		log.Printf(logBeginTxFailed, err)
 		return err
 	}
 
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf("Failed to rollback transaction: %v", err)
+			log.Printf(logRollbackFailed, err)
 		}
 	}()
 
@@ -220,7 +227,7 @@ func (b BookPostgresRepository) Delete(id string) error {
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
+		log.Printf(logCommitTxFailed, err)
 		return err
 	}
 
@@ -232,13 +239,13 @@ func (b BookPostgresRepository) Update(id, name string, authors ...model.Author)
 
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
+		log.Printf(logBeginTxFailed, err)
 		return nil, err
 	}
 
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf("Failed to rollback transaction: %v", err)
+			log.Printf(logRollbackFailed, err)
 		}
 	}()
 
@@ -271,7 +278,7 @@ func (b BookPostgresRepository) Update(id, name string, authors ...model.Author)
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
+		log.Printf(logCommitTxFailed, err)
 		return nil, err
 	}
 

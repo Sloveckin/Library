@@ -11,6 +11,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	createBookPath     = "/book/create"
+	expectedCreateBookStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockCreateService struct {
 	createFunc func(name string, authors ...model.Author) (*model.Book, error)
 }
@@ -31,14 +36,14 @@ func TestCreateSuccess(t *testing.T) {
 		AuthorId: []string{"1", "2"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/book/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedCreateBookStatusMsg, http.StatusCreated, w.Code)
 	}
 
 	var resp createResponse
@@ -59,14 +64,14 @@ func TestCreateValidationError(t *testing.T) {
 
 	req := createRequest{Name: "", AuthorId: []string{}}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/book/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -77,14 +82,14 @@ func TestCreateDecodeError(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("POST", "/book/create", bytes.NewReader([]byte("invalid")))
+	httpReq := httptest.NewRequest("POST", createBookPath, bytes.NewReader([]byte("invalid")))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -100,14 +105,14 @@ func TestCreateServiceError(t *testing.T) {
 		AuthorId: []string{"1"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/book/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -123,13 +128,13 @@ func TestCreateEmptyName(t *testing.T) {
 		AuthorId: []string{"1"},
 	}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/book/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createBookPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
-	}
+		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
+}
 }

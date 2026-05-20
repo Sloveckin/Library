@@ -131,9 +131,7 @@ function AuthorSection() {
           <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0 }}>{modalTitle}</h2>
             <div style={{ margin: '16px 0', lineHeight: '1.5' }}>
-              {modalMessage.split('\n').map((line, idx) => (
-                <div key={idx}>{line}</div>
-              ))}
+              <div style={{ whiteSpace: 'pre-line' }}>{modalMessage}</div>
             </div>
             <button onClick={closeModal} style={btnStyle('#007bff')}>Закрыть</button>
           </div>

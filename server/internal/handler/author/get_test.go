@@ -9,6 +9,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	getAuthorPath      = "/author/get?id=1"
+	expectedGetAuthorStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockGetService struct {
 	getFunc func(id string) (*model.Author, error)
 }
@@ -24,14 +29,14 @@ func TestGetSuccess(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/author/get?id=1", nil)
+	httpReq := httptest.NewRequest("GET", getAuthorPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := Get(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedGetAuthorStatusMsg, http.StatusCreated, w.Code)
 	}
 }
 
@@ -49,7 +54,7 @@ func TestGetMissingId(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedGetAuthorStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -60,14 +65,14 @@ func TestGetServiceError(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/author/get?id=1", nil)
+	httpReq := httptest.NewRequest("GET", getAuthorPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := Get(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
+		t.Errorf(expectedGetAuthorStatusMsg, http.StatusNotFound, w.Code)
 	}
 }
 
@@ -78,13 +83,13 @@ func TestGetNilAuthor(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/author/get?id=1", nil)
+	httpReq := httptest.NewRequest("GET", getAuthorPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := Get(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
-	}
+		t.Errorf(expectedGetAuthorStatusMsg, http.StatusNotFound, w.Code)
+}
 }

@@ -7,6 +7,13 @@ import (
 	"server/internal/model"
 )
 
+const (
+	testBookName        = "Test Book"
+	dbErrorMessage      = "db error"
+	errExpectedNoErrorFmt = "Expected no error, got %v"
+	errExpectedErrorNil = "Expected error, got nil"
+)
+
 type mockRepository struct {
 	createFunc      func(name string, authors ...model.Author) (*model.Book, error)
 	getFunc         func(id string) (*model.Book, error)
@@ -70,10 +77,10 @@ func TestCreateSuccess(t *testing.T) {
 	}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	book, err := service.Create("Test Book", model.Author{Id: "1"})
+	book, err := service.Create(testBookName, model.Author{Id: "1"})
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 	if book.Id != "1" {
 		t.Errorf("Expected ID '1', got %s", book.Id)
@@ -97,7 +104,7 @@ func TestCreateBookExists(t *testing.T) {
 	}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	_, err := service.Create("Test Book")
+	_, err := service.Create(testBookName)
 
 	if err != ErrBookAlreadyExists {
 		t.Errorf("Expected ErrBookAlreadyExists, got %v", err)
@@ -118,7 +125,7 @@ func TestCreateAuthorNotFound(t *testing.T) {
 	}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	_, err := service.Create("Test Book", model.Author{Id: "999"})
+	_, err := service.Create(testBookName, model.Author{Id: "999"})
 
 	if err != ErrAuthorNotFound {
 		t.Errorf("Expected ErrAuthorNotFound, got %v", err)
@@ -138,7 +145,7 @@ func TestGet(t *testing.T) {
 	book, err := service.Get("1")
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 	if book.Id != "1" {
 		t.Errorf("Expected ID '1', got %s", book.Id)
@@ -158,7 +165,7 @@ func TestDelete(t *testing.T) {
 	err := service.Delete("1")
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 }
 
@@ -202,7 +209,7 @@ func TestUpdateSuccess(t *testing.T) {
 	book, err := service.Update("1", "Updated", model.Author{Id: "1"})
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 	if book.Name != "Updated" {
 		t.Errorf("Expected name 'Updated', got %s", book.Name)
@@ -239,7 +246,7 @@ func TestExistsById(t *testing.T) {
 	exists, err := service.ExistsById("1")
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 	if !exists {
 		t.Errorf("Expected exists=true, got false")
@@ -259,7 +266,7 @@ func TestExistByName(t *testing.T) {
 	exists, err := service.ExistByName("Test")
 
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Errorf(errExpectedNoErrorFmt, err)
 	}
 	if !exists {
 		t.Errorf("Expected exists=true, got false")
@@ -269,17 +276,17 @@ func TestExistByName(t *testing.T) {
 func TestCreateExistsByNameError(t *testing.T) {
 	mockRepo := &mockRepository{
 		existsByNameFunc: func(name string) (bool, error) {
-			return false, errors.New("db error")
+			return false, errors.New(dbErrorMessage)
 		},
 	}
 
 	mockAuthorSvc := &mockAuthorService{}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	_, err := service.Create("Test Book")
+	_, err := service.Create(testBookName)
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
@@ -297,10 +304,10 @@ func TestCreateAuthorServiceError(t *testing.T) {
 	}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	_, err := service.Create("Test Book", model.Author{Id: "1"})
+	_, err := service.Create(testBookName, model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
@@ -321,17 +328,17 @@ func TestCreateRepositoryError(t *testing.T) {
 	}
 
 	service := NewServiceBook(mockRepo, mockAuthorSvc)
-	_, err := service.Create("Test Book", model.Author{Id: "1"})
+	_, err := service.Create(testBookName, model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
 func TestExistsByIdError(t *testing.T) {
 	mockRepo := &mockRepository{
 		existsByIdFunc: func(id string) (bool, error) {
-			return false, errors.New("db error")
+			return false, errors.New(dbErrorMessage)
 		},
 	}
 
@@ -341,14 +348,14 @@ func TestExistsByIdError(t *testing.T) {
 	_, err := service.ExistsById("1")
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
 func TestExistByNameError(t *testing.T) {
 	mockRepo := &mockRepository{
 		existsByNameFunc: func(name string) (bool, error) {
-			return false, errors.New("db error")
+			return false, errors.New(dbErrorMessage)
 		},
 	}
 
@@ -358,14 +365,14 @@ func TestExistByNameError(t *testing.T) {
 	_, err := service.ExistByName("Test")
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
 func TestUpdateExistsByIdError(t *testing.T) {
 	mockRepo := &mockRepository{
 		existsByIdFunc: func(id string) (bool, error) {
-			return false, errors.New("db error")
+			return false, errors.New(dbErrorMessage)
 		},
 	}
 
@@ -375,7 +382,7 @@ func TestUpdateExistsByIdError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
@@ -385,7 +392,7 @@ func TestUpdateExistsByNameError(t *testing.T) {
 			return true, nil
 		},
 		existsByNameFunc: func(name string) (bool, error) {
-			return false, errors.New("db error")
+			return false, errors.New(dbErrorMessage)
 		},
 	}
 
@@ -395,7 +402,7 @@ func TestUpdateExistsByNameError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
@@ -441,7 +448,7 @@ func TestUpdateGetByNameError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }
 
@@ -492,6 +499,6 @@ func TestUpdateRepositoryError(t *testing.T) {
 	_, err := service.Update("1", "Updated", model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf("Expected error, got nil")
+		t.Errorf(errExpectedErrorNil)
 	}
 }

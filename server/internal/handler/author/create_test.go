@@ -11,6 +11,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	createAuthorPath   = "/author/create"
+	expectedCreateAuthorStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockCreateService struct {
 	createFunc func(name string) (*model.Author, error)
 }
@@ -28,14 +33,14 @@ func TestCreateSuccess(t *testing.T) {
 
 	req := createRequest{Name: "Test Author"}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/author/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedCreateAuthorStatusMsg, http.StatusCreated, w.Code)
 	}
 
 	var resp CreateResponse
@@ -59,14 +64,14 @@ func TestCreateValidationError(t *testing.T) {
 
 	req := createRequest{Name: ""}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/author/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedCreateAuthorStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -77,14 +82,14 @@ func TestCreateDecodeError(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("POST", "/author/create", bytes.NewReader([]byte("invalid json")))
+	httpReq := httptest.NewRequest("POST", createAuthorPath, bytes.NewReader([]byte("invalid json")))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedCreateAuthorStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -97,13 +102,13 @@ func TestCreateServiceError(t *testing.T) {
 
 	req := createRequest{Name: "Test Author"}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("POST", "/author/create", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("POST", createAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Create(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
-	}
+		t.Errorf(expectedCreateAuthorStatusMsg, http.StatusBadRequest, w.Code)
+}
 }

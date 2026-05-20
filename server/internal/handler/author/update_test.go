@@ -11,6 +11,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	updateAuthorPath   = "/author/update"
+	expectedUpdateAuthorStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockUpdateService struct {
 	updateFunc func(id, name string) (*model.Author, error)
 }
@@ -28,14 +33,14 @@ func TestUpdateSuccess(t *testing.T) {
 
 	req := updateRequest{Id: "1", Name: "Updated Author"}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/author/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedUpdateAuthorStatusMsg, http.StatusCreated, w.Code)
 	}
 
 	var resp updateResponse
@@ -56,14 +61,14 @@ func TestUpdateValidationError(t *testing.T) {
 
 	req := updateRequest{Id: "1", Name: ""}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/author/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedUpdateAuthorStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -76,15 +81,15 @@ func TestUpdateServiceError(t *testing.T) {
 
 	req := updateRequest{Id: "1", Name: "Updated"}
 	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest("PUT", "/author/update", bytes.NewReader(body))
+	httpReq := httptest.NewRequest("PUT", updateAuthorPath, bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
 	handler := Update(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected status %d, got %d", http.StatusNotFound, w.Code)
-	}
+		t.Errorf(expectedUpdateAuthorStatusMsg, http.StatusNotFound, w.Code)
+}
 }
 
 var ErrAuthorNotFound error

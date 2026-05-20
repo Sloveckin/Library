@@ -1,16 +1,18 @@
 package service_author
 
 import (
+	"errors"
+	"reflect"
 	"server/internal/model"
 	"server/internal/service/author/mocks"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	"errors"
 )
 
-func TestAuthorServiceImpl_Create(t *testing.T) {
+const dbErrorMessage = "db error"
+
+func TestAuthorServiceImplCreate(t *testing.T) {
 	type args struct {
 		name string
 	}
@@ -78,7 +80,7 @@ func TestAuthorServiceImpl_Create(t *testing.T) {
 	}
 }
 
-func TestAuthorServiceImpl_Delete(t *testing.T) {
+func TestAuthorServiceImplDelete(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -117,7 +119,7 @@ func TestAuthorServiceImpl_Delete(t *testing.T) {
 	}
 }
 
-func TestAuthorServiceImpl_ExistsById(t *testing.T) {
+func TestAuthorServiceImplExistsById(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -161,7 +163,7 @@ func TestAuthorServiceImpl_ExistsById(t *testing.T) {
 	}
 }
 
-func TestAuthorServiceImpl_ExistsByName(t *testing.T) {
+func TestAuthorServiceImplExistsByName(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -205,7 +207,7 @@ func TestAuthorServiceImpl_ExistsByName(t *testing.T) {
 	}
 }
 
-func TestAuthorServiceImpl_Get(t *testing.T) {
+func TestAuthorServiceImplGet(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -246,24 +248,48 @@ func TestAuthorServiceImpl_Get(t *testing.T) {
 	}
 }
 
-func TestAuthorServiceImpl_Update(t *testing.T) {
+type updateArgs struct {
+	id   string
+	name string
+}
 
-	type args struct {
-		id   string
-		name string
+type updateTestCase struct {
+	name        string
+	args        updateArgs
+	setupMock   func(repo *mocks.AuthorRepository)
+	want        *model.Author
+	wantErr     bool
+	expectedErr error
+}
+
+func assertUpdateResult(t *testing.T, tt updateTestCase, got *model.Author, err error) {
+	t.Helper()
+
+	if tt.wantErr {
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		}
+		if tt.expectedErr != nil && err != tt.expectedErr {
+			t.Errorf("expected err %v, got %v", tt.expectedErr, err)
+		}
+		return
 	}
 
-	tests := []struct {
-		name        string
-		args        args
-		setupMock   func(repo *mocks.AuthorRepository)
-		want        *model.Author
-		wantErr     bool
-		expectedErr error
-	}{
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+
+	if !reflect.DeepEqual(got, tt.want) {
+		t.Errorf("Update() got = %v, want %v", got, tt.want)
+	}
+}
+
+func TestAuthorServiceImplUpdate(t *testing.T) {
+	tests := []updateTestCase{
 		{
 			name: "success update",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "NewName",
 			},
@@ -281,7 +307,7 @@ func TestAuthorServiceImpl_Update(t *testing.T) {
 		},
 		{
 			name: "author not exists by id",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "NewName",
 			},
@@ -293,30 +319,30 @@ func TestAuthorServiceImpl_Update(t *testing.T) {
 		},
 		{
 			name: "error from ExistsById",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "NewName",
 			},
 			setupMock: func(repo *mocks.AuthorRepository) {
-				repo.On("ExistsById", "1").Return(false, errors.New("db error"))
+				repo.On("ExistsById", "1").Return(false, errors.New(dbErrorMessage))
 			},
 			wantErr: true,
 		},
 		{
 			name: "error from ExistsByName",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "NewName",
 			},
 			setupMock: func(repo *mocks.AuthorRepository) {
 				repo.On("ExistsById", "1").Return(true, nil)
-				repo.On("ExistsByName", "NewName").Return(false, errors.New("db error"))
+				repo.On("ExistsByName", "NewName").Return(false, errors.New(dbErrorMessage))
 			},
 			wantErr: true,
 		},
 		{
 			name: "name already exists for another author",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "ExistingName",
 			},
@@ -331,7 +357,7 @@ func TestAuthorServiceImpl_Update(t *testing.T) {
 		},
 		{
 			name: "error from GetByName",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "ExistingName",
 			},
@@ -339,13 +365,13 @@ func TestAuthorServiceImpl_Update(t *testing.T) {
 				repo.On("ExistsById", "1").Return(true, nil)
 				repo.On("ExistsByName", "ExistingName").Return(true, nil)
 				repo.On("GetByName", "ExistingName").
-					Return(nil, errors.New("db error"))
+					Return(nil, errors.New(dbErrorMessage))
 			},
 			wantErr: true,
 		},
 		{
 			name: "same author updates same name",
-			args: args{
+			args: updateArgs{
 				id:   "1",
 				name: "SameName",
 			},
@@ -380,25 +406,7 @@ func TestAuthorServiceImpl_Update(t *testing.T) {
 			}
 
 			got, err := s.Update(tt.args.id, tt.args.name)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
-				if tt.expectedErr != nil && err != tt.expectedErr {
-					t.Errorf("expected err %v, got %v", tt.expectedErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Update() got = %v, want %v", got, tt.want)
-			}
+			assertUpdateResult(t, tt, got, err)
 		})
 	}
 }

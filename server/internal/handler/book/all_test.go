@@ -9,6 +9,11 @@ import (
 	"server/internal/model"
 )
 
+const (
+	getAllBooksPath    = "/book/all"
+	expectedAllBookStatusMsg  = "Expected status %d, got %d"
+)
+
 type mockAllService struct {
 	getAllFunc func() ([]model.Book, error)
 }
@@ -39,14 +44,14 @@ func TestAllSuccess(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/book/all", nil)
+	httpReq := httptest.NewRequest("GET", getAllBooksPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := All(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+		t.Errorf(expectedAllBookStatusMsg, http.StatusOK, w.Code)
 	}
 }
 
@@ -57,14 +62,14 @@ func TestAllEmptyList(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/book/all", nil)
+	httpReq := httptest.NewRequest("GET", getAllBooksPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := All(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+		t.Errorf(expectedAllBookStatusMsg, http.StatusOK, w.Code)
 	}
 }
 
@@ -75,13 +80,13 @@ func TestAllServiceError(t *testing.T) {
 		},
 	}
 
-	httpReq := httptest.NewRequest("GET", "/book/all", nil)
+	httpReq := httptest.NewRequest("GET", getAllBooksPath, nil)
 	w := httptest.NewRecorder()
 
 	handler := All(mockService)
 	handler(w, httpReq)
 
 	if w.Code != http.StatusInternalServerError {
-		t.Errorf("Expected status %d, got %d", http.StatusInternalServerError, w.Code)
-	}
+		t.Errorf(expectedAllBookStatusMsg, http.StatusInternalServerError, w.Code)
+}
 }

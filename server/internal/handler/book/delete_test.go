@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+const expectedDeleteBookStatusMsg = "Expected status %d, got %d"
+
 type mockDeleteService struct {
 	deleteFunc func(id string) error
 }
@@ -29,7 +31,7 @@ func TestDeleteSuccess(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status %d, got %d", http.StatusCreated, w.Code)
+		t.Errorf(expectedDeleteBookStatusMsg, http.StatusCreated, w.Code)
 	}
 }
 
@@ -47,7 +49,7 @@ func TestDeleteMissingId(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+		t.Errorf(expectedDeleteBookStatusMsg, http.StatusBadRequest, w.Code)
 	}
 }
 
@@ -65,6 +67,6 @@ func TestDeleteServiceError(t *testing.T) {
 	handler(w, httpReq)
 
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
-	}
+		t.Errorf(expectedDeleteBookStatusMsg, http.StatusBadRequest, w.Code)
+}
 }
