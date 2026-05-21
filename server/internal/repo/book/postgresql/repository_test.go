@@ -367,20 +367,17 @@ func TestDeleteContract(t *testing.T) {
 // ── Update ────────────────────────────────────────────────────────────────────
 
 func TestUpdateContract(t *testing.T) {
+	runUpdate := func(repo *BookPostgresRepository) (*model.Book, error) {
+		return repo.Update("b1", updatedBookName, testAuthor)
+	}
+
 	runBookScenarioContract(t, []bookScenario{
 		{
 			name: "success",
 			prepare: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-					WithArgs(updatedBookName, "b1").
-					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-					WithArgs("b1").
-					WillReturnResult(pgxmock.NewResult("DELETE", 1))
-				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-					WithArgs("a1", "b1").
-					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				expectBeginAndUpdateQuerySuccess(mock)
+				expectDeleteAuthorToBookSuccess(mock)
+				expectInsertAuthorToBookSuccess(mock)
 				mock.ExpectCommit()
 			},
 			assertBook: func(t *testing.T, book *model.Book) {
@@ -389,9 +386,7 @@ func TestUpdateContract(t *testing.T) {
 					t.Errorf("unexpected book name: %v", book.Name)
 				}
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run: runUpdate,
 		},
 		{
 			name: "update error",
@@ -402,26 +397,17 @@ func TestUpdateContract(t *testing.T) {
 					WillReturnError(errors.New("update error"))
 				mock.ExpectRollback()
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run:     runUpdate,
 			wantErr: true,
 		},
 		{
 			name: "delete authors error",
 			prepare: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-					WithArgs(updatedBookName, "b1").
-					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-					WithArgs("b1").
-					WillReturnError(errors.New(deleteErrorMessage))
+				expectBeginAndUpdateQuerySuccess(mock)
+				expectDeleteAuthorToBookError(mock)
 				mock.ExpectRollback()
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run:     runUpdate,
 			wantErr: true,
 		},
 		{
@@ -429,52 +415,63 @@ func TestUpdateContract(t *testing.T) {
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run:     runUpdate,
 			wantErr: true,
 		},
 		{
 			name: "insert author error",
 			prepare: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-					WithArgs(updatedBookName, "b1").
-					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-					WithArgs("b1").
-					WillReturnResult(pgxmock.NewResult("DELETE", 1))
-				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-					WithArgs("a1", "b1").
-					WillReturnError(errors.New("author insert error"))
+				expectBeginAndUpdateQuerySuccess(mock)
+				expectDeleteAuthorToBookSuccess(mock)
+				expectInsertAuthorToBookError(mock)
 				mock.ExpectRollback()
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run:     runUpdate,
 			wantErr: true,
 		},
 		{
 			name: commitErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectBegin()
-				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-					WithArgs(updatedBookName, "b1").
-					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-					WithArgs("b1").
-					WillReturnResult(pgxmock.NewResult("DELETE", 1))
-				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-					WithArgs("a1", "b1").
-					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				expectBeginAndUpdateQuerySuccess(mock)
+				expectDeleteAuthorToBookSuccess(mock)
+				expectInsertAuthorToBookSuccess(mock)
 				mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
 			},
-			run: func(repo *BookPostgresRepository) (*model.Book, error) {
-				return repo.Update("b1", updatedBookName, testAuthor)
-			},
+			run:     runUpdate,
 			wantErr: true,
 		},
 	})
+}
+
+func expectBeginAndUpdateQuerySuccess(mock pgxmock.PgxPoolIface) {
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+		WithArgs(updatedBookName, "b1").
+		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
+}
+
+func expectDeleteAuthorToBookSuccess(mock pgxmock.PgxPoolIface) {
+	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+		WithArgs("b1").
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+}
+
+func expectDeleteAuthorToBookError(mock pgxmock.PgxPoolIface) {
+	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+		WithArgs("b1").
+		WillReturnError(errors.New(deleteErrorMessage))
+}
+
+func expectInsertAuthorToBookSuccess(mock pgxmock.PgxPoolIface) {
+	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+		WithArgs("a1", "b1").
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+}
+
+func expectInsertAuthorToBookError(mock pgxmock.PgxPoolIface) {
+	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+		WithArgs("a1", "b1").
+		WillReturnError(errors.New("author insert error"))
 }
 
 func runBookScenarioContract(t *testing.T, scenarios []bookScenario) {
