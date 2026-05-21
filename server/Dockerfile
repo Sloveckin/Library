@@ -12,10 +12,13 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/app/main.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-WORKDIR /root/
+RUN adduser -D -u 10001 appuser
+WORKDIR /app
 
-COPY --from=builder /app/main .
+COPY --from=builder /app/main ./main
 
 EXPOSE 8080
+
+USER appuser
 
 CMD ["./main"]

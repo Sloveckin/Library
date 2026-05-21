@@ -16,7 +16,7 @@ spec:
         - name: client
           image: IMAGE_CLIENT_PLACEHOLDER
           ports:
-            - containerPort: 3000
+            - containerPort: 8080
           env:
             - name: REACT_APP_API_URL
               value: http://server:8080/api
@@ -32,4 +32,4 @@ spec:
     app: client
   ports:
     - port: 3000
-      targetPort: 3000
+      targetPort: 8080

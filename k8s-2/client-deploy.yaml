@@ -18,7 +18,7 @@ spec:
         - name: client
           image: cr.yandex/crpiegiuj22g2courr8t/client:latest
           ports:
-            - containerPort: 3000
+            - containerPort: 8080
           env:
             - name: REACT_APP_API_URL
               value: /api

@@ -156,104 +156,113 @@ func runFetchBookContract(
 ) {
 	t.Helper()
 
-	t.Run("success", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
+	type fetchScenario struct {
+		name       string
+		prepare    func(mock pgxmock.PgxPoolIface)
+		assertBook func(t *testing.T, book *model.Book)
+		wantErr    bool
+	}
 
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
-			WithArgs(lookupValue).
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-			WithArgs("b1").
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("a1", authorOneName))
-		mock.ExpectCommit()
+	scenarios := []fetchScenario{
+		{
+			name: "success",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+					WithArgs(lookupValue).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+					WithArgs("b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("a1", authorOneName))
+				mock.ExpectCommit()
+			},
+			assertBook: assertBook,
+		},
+		{
+			name: "begin error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			wantErr: true,
+		},
+		{
+			name: "book query error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+					WithArgs(lookupValue).
+					WillReturnError(errors.New(queryErrorMessage))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "authors query error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+					WithArgs(lookupValue).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+					WithArgs("b1").
+					WillReturnError(errors.New("authors query error"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "author scan error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+					WithArgs(lookupValue).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+					WithArgs("b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id"}).AddRow("a1"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "commit error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+					WithArgs(lookupValue).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+					WithArgs("b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}))
+				mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
+			},
+			wantErr: true,
+		},
+	}
 
-		book, err := fetch(repo)
-		if err != nil {
-			t.Fatalf(errUnexpectedFmt, err)
-		}
-		assertBook(t, book)
-	})
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			repo, mock := newMockRepo(t)
+			scenario.prepare(mock)
 
-	t.Run("begin error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
+			book, err := fetch(repo)
 
-		mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			if scenario.wantErr {
+				if err == nil {
+					t.Fatal(errExpectedErrorNil)
+				}
+				return
+			}
 
-		_, err := fetch(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
-
-	t.Run("book query error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
-			WithArgs(lookupValue).
-			WillReturnError(errors.New(queryErrorMessage))
-		mock.ExpectRollback()
-
-		_, err := fetch(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
-
-	t.Run("authors query error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
-			WithArgs(lookupValue).
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-			WithArgs("b1").
-			WillReturnError(errors.New("authors query error"))
-		mock.ExpectRollback()
-
-		_, err := fetch(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
-
-	t.Run("author scan error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
-			WithArgs(lookupValue).
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-			WithArgs("b1").
-			WillReturnRows(pgxmock.NewRows([]string{"Id"}).AddRow("a1"))
-		mock.ExpectRollback()
-
-		_, err := fetch(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
-
-	t.Run("commit error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectBegin()
-		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
-			WithArgs(lookupValue).
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-			WithArgs("b1").
-			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}))
-		mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
-
-		_, err := fetch(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
+			if err != nil {
+				t.Fatalf(errUnexpectedFmt, err)
+			}
+			if scenario.assertBook != nil {
+				scenario.assertBook(t, book)
+			}
+		})
+	}
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
@@ -475,42 +484,58 @@ func runExistsContract(
 ) {
 	t.Helper()
 
-	t.Run("returns true", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
+	type existsScenario struct {
+		name     string
+		prepare  func(mock pgxmock.PgxPoolIface)
+		wantErr  bool
+		wantBool bool
+	}
 
-		mock.ExpectQuery(regexp.QuoteMeta(query)).
-			WithArgs(arg).
-			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+	scenarios := []existsScenario{
+		{
+			name: "returns true",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(query)).
+					WithArgs(arg).
+					WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+			},
+			wantBool: true,
+		},
+		{
+			name: "returns false",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(query)).
+					WithArgs(arg).
+					WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+			},
+		},
+		{
+			name: "returns error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectQuery(regexp.QuoteMeta(query)).
+					WithArgs(arg).
+					WillReturnError(errors.New(queryErrorMessage))
+			},
+			wantErr: true,
+		},
+	}
 
-		exists, err := existsCheck(repo)
-		if err != nil || !exists {
-			t.Errorf("expected true, got %v, %v", exists, err)
-		}
-	})
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			repo, mock := newMockRepo(t)
+			scenario.prepare(mock)
 
-	t.Run("returns false", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectQuery(regexp.QuoteMeta(query)).
-			WithArgs(arg).
-			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
-
-		exists, err := existsCheck(repo)
-		if err != nil || exists {
-			t.Errorf("expected false, got %v, %v", exists, err)
-		}
-	})
-
-	t.Run("returns error", func(t *testing.T) {
-		repo, mock := newMockRepo(t)
-
-		mock.ExpectQuery(regexp.QuoteMeta(query)).
-			WithArgs(arg).
-			WillReturnError(errors.New(queryErrorMessage))
-
-		_, err := existsCheck(repo)
-		if err == nil {
-			t.Fatal(errExpectedErrorNil)
-		}
-	})
+			exists, err := existsCheck(repo)
+			if scenario.wantErr {
+				if err == nil {
+					t.Fatal(errExpectedErrorNil)
+				}
+				return
+			}
+			if err != nil || exists != scenario.wantBool {
+				t.Errorf("expected %v, got %v, %v", scenario.wantBool, exists, err)
+			}
+		})
+	}
 }

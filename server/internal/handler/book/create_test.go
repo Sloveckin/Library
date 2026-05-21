@@ -36,6 +36,14 @@ func runCreateRequest(t *testing.T, service createService, body []byte) *httptes
 	return w
 }
 
+func assertResponseStatus(t *testing.T, got, want int) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf(expectedCreateBookStatusMsg, want, got)
+	}
+}
+
 func TestCreateSuccess(t *testing.T) {
 	mockService := &mockCreateService{
 		createFunc: func(name string, authors ...model.Author) (*model.Book, error) {
@@ -50,9 +58,7 @@ func TestCreateSuccess(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := runCreateRequest(t, mockService, body)
 
-	if w.Code != http.StatusCreated {
-		t.Errorf(expectedCreateBookStatusMsg, http.StatusCreated, w.Code)
-	}
+	assertResponseStatus(t, w.Code, http.StatusCreated)
 
 	var resp createResponse
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
@@ -74,9 +80,7 @@ func TestCreateValidationError(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := runCreateRequest(t, mockService, body)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
-	}
+	assertResponseStatus(t, w.Code, http.StatusBadRequest)
 }
 
 func TestCreateDecodeError(t *testing.T) {
@@ -88,9 +92,7 @@ func TestCreateDecodeError(t *testing.T) {
 
 	w := runCreateRequest(t, mockService, []byte("invalid"))
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
-	}
+	assertResponseStatus(t, w.Code, http.StatusBadRequest)
 }
 
 func TestCreateServiceError(t *testing.T) {
@@ -107,9 +109,7 @@ func TestCreateServiceError(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := runCreateRequest(t, mockService, body)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
-	}
+	assertResponseStatus(t, w.Code, http.StatusBadRequest)
 }
 
 func TestCreateEmptyName(t *testing.T) {
@@ -126,7 +126,5 @@ func TestCreateEmptyName(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := runCreateRequest(t, mockService, body)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf(expectedCreateBookStatusMsg, http.StatusBadRequest, w.Code)
-	}
+	assertResponseStatus(t, w.Code, http.StatusBadRequest)
 }
