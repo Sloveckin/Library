@@ -13,8 +13,8 @@ function App() {
       margin: '0 auto',
       backgroundColor: '#f9f9f9',
     }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '40px', color: '#333' }}>
-        Library Management Client
+      <h1 style={{ textAlign: 'center', marginBottom: '40px', color: '#413838' }}>
+        Library Management Client V2
       </h1>
 
        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '40px' }}>
