@@ -43,17 +43,18 @@ const (
 
 var testAuthor = model.Author{Id: "a1", Name: authorOneName}
 
+type bookScenario struct {
+	name       string
+	prepare    func(mock pgxmock.PgxPoolIface)
+	run        func(repo *BookPostgresRepository) (*model.Book, error)
+	assertBook func(t *testing.T, book *model.Book)
+	wantErr    bool
+}
+
 // ── Create ────────────────────────────────────────────────────────────────────
 
 func TestCreateContract(t *testing.T) {
-	type createScenario struct {
-		name       string
-		prepare    func(mock pgxmock.PgxPoolIface)
-		assertBook func(t *testing.T, book *model.Book)
-		wantErr    bool
-	}
-
-	scenarios := []createScenario{
+	runBookScenarioContract(t, []bookScenario{
 		{
 			name: "success",
 			prepare: func(mock pgxmock.PgxPoolIface) {
@@ -72,11 +73,17 @@ func TestCreateContract(t *testing.T) {
 					t.Errorf(errUnexpectedBookFmt, book)
 				}
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Create(bookOneName, testAuthor)
+			},
 		},
 		{
-			name: "begin error",
+			name: beginErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Create(bookOneName, testAuthor)
 			},
 			wantErr: true,
 		},
@@ -88,6 +95,9 @@ func TestCreateContract(t *testing.T) {
 					WithArgs(bookOneName).
 					WillReturnError(errors.New("insert error"))
 				mock.ExpectRollback()
+			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Create(bookOneName, testAuthor)
 			},
 			wantErr: true,
 		},
@@ -103,35 +113,12 @@ func TestCreateContract(t *testing.T) {
 					WillReturnError(errors.New("author insert error"))
 				mock.ExpectRollback()
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Create(bookOneName, testAuthor)
+			},
 			wantErr: true,
 		},
-	}
-
-	for _, scenario := range scenarios {
-		scenario := scenario
-		t.Run(scenario.name, func(t *testing.T) {
-			repo, mock := newMockRepo(t)
-			scenario.prepare(mock)
-
-			book, err := repo.Create(bookOneName, testAuthor)
-			if scenario.wantErr {
-				if err == nil {
-					t.Fatal(errExpectedErrorNil)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf(errUnexpectedFmt, err)
-			}
-			if scenario.assertBook != nil {
-				scenario.assertBook(t, book)
-			}
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("unmet expectations: %v", err)
-			}
-		})
-	}
+	})
 }
 
 // ── Get ───────────────────────────────────────────────────────────────────────
@@ -200,7 +187,7 @@ func runFetchBookContract(
 			assertBook: assertBook,
 		},
 		{
-			name: "begin error",
+			name: beginErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
 			},
@@ -246,7 +233,7 @@ func runFetchBookContract(
 			wantErr: true,
 		},
 		{
-			name: "commit error",
+			name: commitErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
@@ -335,14 +322,14 @@ func TestDeleteContract(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "begin error",
+			name: beginErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
 			},
 			wantErr: true,
 		},
 		{
-			name: "commit error",
+			name: commitErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
@@ -380,14 +367,7 @@ func TestDeleteContract(t *testing.T) {
 // ── Update ────────────────────────────────────────────────────────────────────
 
 func TestUpdateContract(t *testing.T) {
-	type updateScenario struct {
-		name       string
-		prepare    func(mock pgxmock.PgxPoolIface)
-		assertBook func(t *testing.T, book *model.Book)
-		wantErr    bool
-	}
-
-	scenarios := []updateScenario{
+	runBookScenarioContract(t, []bookScenario{
 		{
 			name: "success",
 			prepare: func(mock pgxmock.PgxPoolIface) {
@@ -409,6 +389,9 @@ func TestUpdateContract(t *testing.T) {
 					t.Errorf("unexpected book name: %v", book.Name)
 				}
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
+			},
 		},
 		{
 			name: "update error",
@@ -418,6 +401,9 @@ func TestUpdateContract(t *testing.T) {
 					WithArgs(updatedBookName, "b1").
 					WillReturnError(errors.New("update error"))
 				mock.ExpectRollback()
+			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
 			},
 			wantErr: true,
 		},
@@ -433,12 +419,18 @@ func TestUpdateContract(t *testing.T) {
 					WillReturnError(errors.New(deleteErrorMessage))
 				mock.ExpectRollback()
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
+			},
 			wantErr: true,
 		},
 		{
-			name: "begin error",
+			name: beginErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
 			},
 			wantErr: true,
 		},
@@ -457,10 +449,13 @@ func TestUpdateContract(t *testing.T) {
 					WillReturnError(errors.New("author insert error"))
 				mock.ExpectRollback()
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
+			},
 			wantErr: true,
 		},
 		{
-			name: "commit error",
+			name: commitErrorMessage,
 			prepare: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
@@ -474,9 +469,16 @@ func TestUpdateContract(t *testing.T) {
 					WillReturnResult(pgxmock.NewResult("INSERT", 1))
 				mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
 			},
+			run: func(repo *BookPostgresRepository) (*model.Book, error) {
+				return repo.Update("b1", updatedBookName, testAuthor)
+			},
 			wantErr: true,
 		},
-	}
+	})
+}
+
+func runBookScenarioContract(t *testing.T, scenarios []bookScenario) {
+	t.Helper()
 
 	for _, scenario := range scenarios {
 		scenario := scenario
@@ -484,7 +486,7 @@ func TestUpdateContract(t *testing.T) {
 			repo, mock := newMockRepo(t)
 			scenario.prepare(mock)
 
-			book, err := repo.Update("b1", updatedBookName, testAuthor)
+			book, err := scenario.run(repo)
 			if scenario.wantErr {
 				if err == nil {
 					t.Fatal(errExpectedErrorNil)
@@ -497,6 +499,9 @@ func TestUpdateContract(t *testing.T) {
 			}
 			if scenario.assertBook != nil {
 				scenario.assertBook(t, book)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("unmet expectations: %v", err)
 			}
 		})
 	}

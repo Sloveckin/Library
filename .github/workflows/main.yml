@@ -135,7 +135,7 @@ jobs:
         run: docker push $REGISTRY/server:${{ github.sha }}
 
   build-client-docker:
-    needs: [build-client]
+    needs: [build-server-docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -182,6 +182,8 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs:
+      - test-server
+      - test-client
       - sonar-analysis
       - build-server
       - build-client
@@ -193,7 +195,18 @@ jobs:
     steps:
       - name: Send Telegram notification
         run: |
-          if [[ "${{ needs.sonar-analysis.result }}" == "success" && \
+          TEST_SERVER="${{ needs.test-server.result }}"
+          TEST_CLIENT="${{ needs.test-client.result }}"
+          SONAR="${{ needs.sonar-analysis.result }}"
+          BUILD_SERVER="${{ needs.build-server.result }}"
+          BUILD_CLIENT="${{ needs.build-client.result }}"
+          BUILD_SERVER_DOCKER="${{ needs.build-server-docker.result }}"
+          BUILD_CLIENT_DOCKER="${{ needs.build-client-docker.result }}"
+          UPDATE_MANIFESTS="${{ needs.update-manifests.result }}"
+
+          if [[ "${{ needs.test-server.result }}" == "success" && \
+                "${{ needs.test-client.result }}" == "success" && \
+                "${{ needs.sonar-analysis.result }}" == "success" && \
                 "${{ needs.build-server.result }}" == "success" && \
                 "${{ needs.build-client.result }}" == "success" && \
                 "${{ needs.build-server-docker.result }}" == "success" && \
@@ -211,7 +224,17 @@ jobs:
           Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Commit: ${{ github.sha }}
 
-          Workflow: ${{ github.workflow }}"
+          Workflow: ${{ github.workflow }}
+
+          Jobs:
+          - test-server: $TEST_SERVER
+          - test-client: $TEST_CLIENT
+          - sonar-analysis: $SONAR
+          - build-server: $BUILD_SERVER
+          - build-client: $BUILD_CLIENT
+          - build-server-docker: $BUILD_SERVER_DOCKER
+          - build-client-docker: $BUILD_CLIENT_DOCKER
+          - update-manifests: $UPDATE_MANIFESTS"
 
           curl -s -X POST \
             https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
