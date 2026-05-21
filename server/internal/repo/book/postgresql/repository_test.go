@@ -487,23 +487,46 @@ func runBookScenarioContract(t *testing.T, scenarios []bookScenario) {
 			scenario.prepare(mock)
 
 			book, err := scenario.run(repo)
-			if scenario.wantErr {
-				if err == nil {
-					t.Fatal(errExpectedErrorNil)
-				}
+			if !assertBookScenarioResult(t, scenario, book, err) {
 				return
 			}
 
-			if err != nil {
-				t.Fatalf(errUnexpectedFmt, err)
-			}
-			if scenario.assertBook != nil {
-				scenario.assertBook(t, book)
-			}
-			if err := mock.ExpectationsWereMet(); err != nil {
-				t.Errorf("unmet expectations: %v", err)
-			}
+			assertMockExpectations(t, mock)
 		})
+	}
+}
+
+func assertBookScenarioResult(
+	t *testing.T,
+	scenario bookScenario,
+	book *model.Book,
+	err error,
+) bool {
+	t.Helper()
+
+	if scenario.wantErr {
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+		return false
+	}
+
+	if err != nil {
+		t.Fatalf(errUnexpectedFmt, err)
+	}
+
+	if scenario.assertBook != nil {
+		scenario.assertBook(t, book)
+	}
+
+	return true
+}
+
+func assertMockExpectations(t *testing.T, mock pgxmock.PgxPoolIface) {
+	t.Helper()
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
 	}
 }
 
