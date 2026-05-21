@@ -16,7 +16,7 @@ spec:
         - name: yc-registry-secret
       containers:
         - name: client
-          image: cr.yandex/crpiegiuj22g2courr8t/client:latest
+          image: cr.yandex/crpiegiuj22g2courr8t/client:d8994714eb5bad24cb99e5856f2654ea891c851d
           ports:
             - containerPort: 8080
           env:
