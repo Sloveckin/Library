@@ -45,71 +45,92 @@ var testAuthor = model.Author{Id: "a1", Name: authorOneName}
 
 // ── Create ────────────────────────────────────────────────────────────────────
 
-func TestCreateSuccess(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-		WithArgs("a1", "b1").
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	mock.ExpectCommit()
-
-	book, err := repo.Create(bookOneName, testAuthor)
-	if err != nil {
-		t.Fatalf(errUnexpectedFmt, err)
+func TestCreateContract(t *testing.T) {
+	type createScenario struct {
+		name       string
+		prepare    func(mock pgxmock.PgxPoolIface)
+		assertBook func(t *testing.T, book *model.Book)
+		wantErr    bool
 	}
-	if book.Id != "b1" || book.Name != bookOneName {
-		t.Errorf(errUnexpectedBookFmt, book)
+
+	scenarios := []createScenario{
+		{
+			name: "success",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
+					WithArgs(bookOneName).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+					WithArgs("a1", "b1").
+					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				mock.ExpectCommit()
+			},
+			assertBook: func(t *testing.T, book *model.Book) {
+				t.Helper()
+				if book.Id != "b1" || book.Name != bookOneName {
+					t.Errorf(errUnexpectedBookFmt, book)
+				}
+			},
+		},
+		{
+			name: "begin error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			wantErr: true,
+		},
+		{
+			name: "insert book error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
+					WithArgs(bookOneName).
+					WillReturnError(errors.New("insert error"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "insert author error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
+					WithArgs(bookOneName).
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+					WithArgs("a1", "b1").
+					WillReturnError(errors.New("author insert error"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
 	}
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unmet expectations: %v", err)
-	}
-}
 
-func TestCreateBeginError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			repo, mock := newMockRepo(t)
+			scenario.prepare(mock)
 
-	mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			book, err := repo.Create(bookOneName, testAuthor)
+			if scenario.wantErr {
+				if err == nil {
+					t.Fatal(errExpectedErrorNil)
+				}
+				return
+			}
 
-	_, err := repo.Create(bookOneName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestCreateInsertBookError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
-		WithArgs(bookOneName).
-		WillReturnError(errors.New("insert error"))
-	mock.ExpectRollback()
-
-	_, err := repo.Create(bookOneName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestCreateInsertAuthorError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryInsertBook)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-		WithArgs("a1", "b1").
-		WillReturnError(errors.New("author insert error"))
-	mock.ExpectRollback()
-
-	_, err := repo.Create(bookOneName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
+			if err != nil {
+				t.Fatalf(errUnexpectedFmt, err)
+			}
+			if scenario.assertBook != nil {
+				scenario.assertBook(t, book)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Errorf("unmet expectations: %v", err)
+			}
+		})
 	}
 }
 
@@ -267,190 +288,217 @@ func runFetchBookContract(
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
-func TestDeleteSuccess(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit()
-
-	if err := repo.Delete("b1"); err != nil {
-		t.Fatalf(errUnexpectedFmt, err)
+func TestDeleteContract(t *testing.T) {
+	type deleteScenario struct {
+		name    string
+		prepare func(mock pgxmock.PgxPoolIface)
+		wantErr bool
 	}
-}
 
-func TestDeleteDeleteAuthorToBookError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnError(errors.New(deleteErrorMessage))
-	mock.ExpectRollback()
-
-	if err := repo.Delete("b1"); err == nil {
-		t.Fatal(errExpectedErrorNil)
+	scenarios := []deleteScenario{
+		{
+			name: "success",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectCommit()
+			},
+		},
+		{
+			name: "delete author to book error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnError(errors.New(deleteErrorMessage))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "delete book error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
+					WithArgs("b1").
+					WillReturnError(errors.New(deleteErrorMessage))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "begin error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			wantErr: true,
+		},
+		{
+			name: "commit error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
+			},
+			wantErr: true,
+		},
 	}
-}
 
-func TestDeleteDeleteBookError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			repo, mock := newMockRepo(t)
+			scenario.prepare(mock)
 
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
-		WithArgs("b1").
-		WillReturnError(errors.New(deleteErrorMessage))
-	mock.ExpectRollback()
-
-	if err := repo.Delete("b1"); err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestDeleteBeginError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
-
-	if err := repo.Delete("b1"); err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestDeleteCommitError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
-
-	if err := repo.Delete("b1"); err == nil {
-		t.Fatal(errExpectedErrorNil)
+			err := repo.Delete("b1")
+			if scenario.wantErr {
+				if err == nil {
+					t.Fatal(errExpectedErrorNil)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf(errUnexpectedFmt, err)
+			}
+		})
 	}
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
 
-func TestUpdateSuccess(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-		WithArgs(updatedBookName, "b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-		WithArgs("a1", "b1").
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	mock.ExpectCommit()
-
-	book, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err != nil {
-		t.Fatalf(errUnexpectedFmt, err)
+func TestUpdateContract(t *testing.T) {
+	type updateScenario struct {
+		name       string
+		prepare    func(mock pgxmock.PgxPoolIface)
+		assertBook func(t *testing.T, book *model.Book)
+		wantErr    bool
 	}
-	if book.Name != updatedBookName {
-		t.Errorf("unexpected book name: %v", book.Name)
+
+	scenarios := []updateScenario{
+		{
+			name: "success",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+					WithArgs(updatedBookName, "b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+					WithArgs("a1", "b1").
+					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				mock.ExpectCommit()
+			},
+			assertBook: func(t *testing.T, book *model.Book) {
+				t.Helper()
+				if book.Name != updatedBookName {
+					t.Errorf("unexpected book name: %v", book.Name)
+				}
+			},
+		},
+		{
+			name: "update error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+					WithArgs(updatedBookName, "b1").
+					WillReturnError(errors.New("update error"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "delete authors error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+					WithArgs(updatedBookName, "b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnError(errors.New(deleteErrorMessage))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "begin error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+			},
+			wantErr: true,
+		},
+		{
+			name: "insert author error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+					WithArgs(updatedBookName, "b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+					WithArgs("a1", "b1").
+					WillReturnError(errors.New("author insert error"))
+				mock.ExpectRollback()
+			},
+			wantErr: true,
+		},
+		{
+			name: "commit error",
+			prepare: func(mock pgxmock.PgxPoolIface) {
+				mock.ExpectBegin()
+				mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
+					WithArgs(updatedBookName, "b1").
+					WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
+				mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
+					WithArgs("b1").
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
+					WithArgs("a1", "b1").
+					WillReturnResult(pgxmock.NewResult("INSERT", 1))
+				mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
+			},
+			wantErr: true,
+		},
 	}
-}
 
-func TestUpdateUpdateError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+	for _, scenario := range scenarios {
+		scenario := scenario
+		t.Run(scenario.name, func(t *testing.T) {
+			repo, mock := newMockRepo(t)
+			scenario.prepare(mock)
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-		WithArgs(updatedBookName, "b1").
-		WillReturnError(errors.New("update error"))
-	mock.ExpectRollback()
+			book, err := repo.Update("b1", updatedBookName, testAuthor)
+			if scenario.wantErr {
+				if err == nil {
+					t.Fatal(errExpectedErrorNil)
+				}
+				return
+			}
 
-	_, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestUpdateDeleteAuthorsError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-		WithArgs(updatedBookName, "b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnError(errors.New(deleteErrorMessage))
-	mock.ExpectRollback()
-
-	_, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestUpdateBeginError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
-
-	_, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestUpdateInsertAuthorError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-		WithArgs(updatedBookName, "b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-		WithArgs("a1", "b1").
-		WillReturnError(errors.New("author insert error"))
-	mock.ExpectRollback()
-
-	_, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestUpdateCommitError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryUpdateBookByID)).
-		WithArgs(updatedBookName, "b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", updatedBookName))
-	mock.ExpectExec(regexp.QuoteMeta(queryDeleteAuthorToBookByID)).
-		WithArgs("b1").
-		WillReturnResult(pgxmock.NewResult("DELETE", 1))
-	mock.ExpectExec(regexp.QuoteMeta(queryInsertAuthorToBook)).
-		WithArgs("a1", "b1").
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
-
-	_, err := repo.Update("b1", updatedBookName, testAuthor)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
+			if err != nil {
+				t.Fatalf(errUnexpectedFmt, err)
+			}
+			if scenario.assertBook != nil {
+				scenario.assertBook(t, book)
+			}
+		})
 	}
 }
 

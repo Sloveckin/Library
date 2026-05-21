@@ -120,88 +120,71 @@ func TestAuthorServiceImplDelete(t *testing.T) {
 }
 
 func TestAuthorServiceImplExistsById(t *testing.T) {
-	type args struct {
-		id string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "success",
-			args: args{
-				id: "1",
-			},
-			want:    true,
-			wantErr: false,
+	runExistsContract(
+		t,
+		"ExistsById",
+		"1",
+		func(repo *mocks.AuthorRepository, value string) {
+			repo.On("ExistsById", value).Return(true, nil)
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			mockRepo := mocks.NewAuthorRepository(t)
-
-			mockRepo.
-				On("ExistsById", tt.args.id).
-				Return(true, nil)
-
-			s := &AuthorServiceImpl{
-				authorRepository: mockRepo,
-			}
-
-			got, err := s.ExistsById(tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ExistsById() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("ExistsById() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
+		func(s *AuthorServiceImpl, value string) (bool, error) {
+			return s.ExistsById(value)
+		},
+	)
 }
 
 func TestAuthorServiceImplExistsByName(t *testing.T) {
-	type args struct {
-		id string
-	}
+	runExistsContract(
+		t,
+		"ExistsByName",
+		"Mark",
+		func(repo *mocks.AuthorRepository, value string) {
+			repo.On("ExistsByName", value).Return(true, nil)
+		},
+		func(s *AuthorServiceImpl, value string) (bool, error) {
+			return s.ExistsByName(value)
+		},
+	)
+}
+
+func runExistsContract(
+	t *testing.T,
+	name string,
+	value string,
+	setupMock func(repo *mocks.AuthorRepository, value string),
+	action func(service *AuthorServiceImpl, value string) (bool, error),
+) {
+	t.Helper()
+
 	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
+		name  string
+		value string
+		want  bool
 	}{
 		{
-			name: "success",
-			args: args{
-				id: "Mark",
-			},
-			want:    true,
-			wantErr: false,
+			name:  "success",
+			value: value,
+			want:  true,
 		},
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
+		tt := tt
+		t.Run(name+"_"+tt.name, func(t *testing.T) {
 			mockRepo := mocks.NewAuthorRepository(t)
-
-			mockRepo.
-				On("ExistsByName", tt.args.id).
-				Return(true, nil)
+			setupMock(mockRepo, tt.value)
 
 			s := &AuthorServiceImpl{
 				authorRepository: mockRepo,
 			}
 
-			got, err := s.ExistsByName(tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ExistsById() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := action(s, tt.value)
+			if err != nil {
+				t.Errorf("%s() error = %v, wantErr %v", name, err, false)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("ExistsById() got = %v, want %v", got, tt.want)
+				t.Errorf("%s() got = %v, want %v", name, got, tt.want)
 			}
 		})
 	}
