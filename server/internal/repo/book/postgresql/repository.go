@@ -18,14 +18,14 @@ const (
 )
 
 type pgxPool interface {
-    Begin(ctx context.Context) (pgx.Tx, error)
-    QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-    Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-    Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Begin(ctx context.Context) (pgx.Tx, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
 type BookPostgresRepository struct {
-    pool pgxPool
+	pool pgxPool
 }
 
 func NewBookPostgresRepository(connectionString string) (*BookPostgresRepository, error) {
@@ -82,64 +82,14 @@ func (b BookPostgresRepository) Create(name string, authors ...model.Author) (*m
 }
 
 func (b BookPostgresRepository) Get(id string) (*model.Book, error) {
-	ctx := context.Background()
-
-	tx, err := b.pool.Begin(ctx)
-	if err != nil {
-		log.Printf(logBeginTxFailed, err)
-		return nil, err
-	}
-
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
-			log.Printf(logRollbackFailed, err)
-		}
-	}()
-
-	var book model.Book
-	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Id = $1", id).Scan(&book.Id, &book.Name)
-	if err != nil {
-		log.Printf(logQueryBookFailed, err)
-		_ = tx.Rollback(ctx)
-		return nil, err
-	}
-
-	rows, err := tx.Query(ctx, "SELECT s.Id, s.Name FROM AuthorToBook AS f LEFT JOIN Authors AS s ON f.AuthorId = s.Id WHERE f.BookId = $1", id)
-	if err != nil {
-		log.Printf("Failed to query authors: %v", err)
-		_ = tx.Rollback(ctx)
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var author model.Author
-		err = rows.Scan(&author.Id, &author.Name)
-		if err != nil {
-			log.Printf("Failed to scan author: %v", err)
-			_ = tx.Rollback(ctx)
-			return nil, err
-		}
-
-		book.Authors = append(book.Authors, author)
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Printf("Rows iteration error: %v", err)
-		_ = tx.Rollback(ctx)
-		return nil, err
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		log.Printf(logCommitTxFailed, err)
-		return nil, err
-	}
-
-	return &book, nil
+	return b.getByField("SELECT Id, Name FROM Books WHERE Id = $1", id)
 }
 
 func (b BookPostgresRepository) GetByName(name string) (*model.Book, error) {
+	return b.getByField("SELECT Id, Name FROM Books WHERE Name = $1", name)
+}
+
+func (b BookPostgresRepository) getByField(query, value string) (*model.Book, error) {
 	ctx := context.Background()
 
 	tx, err := b.pool.Begin(ctx)
@@ -155,14 +105,18 @@ func (b BookPostgresRepository) GetByName(name string) (*model.Book, error) {
 	}()
 
 	var book model.Book
-	err = tx.QueryRow(ctx, "SELECT Id, Name FROM Books WHERE Name = $1", name).Scan(&book.Id, &book.Name)
+	err = tx.QueryRow(ctx, query, value).Scan(&book.Id, &book.Name)
 	if err != nil {
 		log.Printf(logQueryBookFailed, err)
 		_ = tx.Rollback(ctx)
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, "SELECT s.Id, s.Name FROM AuthorToBook AS f LEFT JOIN Authors AS s ON f.AuthorId = s.Id WHERE f.BookId = $1", book.Id)
+	rows, err := tx.Query(
+		ctx,
+		"SELECT s.Id, s.Name FROM AuthorToBook AS f LEFT JOIN Authors AS s ON f.AuthorId = s.Id WHERE f.BookId = $1",
+		book.Id,
+	)
 	if err != nil {
 		log.Printf("Failed to query authors: %v", err)
 		_ = tx.Rollback(ctx)

@@ -115,209 +115,145 @@ func TestCreateInsertAuthorError(t *testing.T) {
 
 // ── Get ───────────────────────────────────────────────────────────────────────
 
-func TestGetSuccess(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("a1", authorOneName))
-	mock.ExpectCommit()
-
-	book, err := repo.Get("b1")
-	if err != nil {
-		t.Fatalf(errUnexpectedFmt, err)
-	}
-	if book.Id != "b1" || len(book.Authors) != 1 {
-		t.Errorf(errUnexpectedBookFmt, book)
-	}
-}
-
-func TestGetBeginError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
-
-	_, err := repo.Get("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestGetQueryBookError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByID)).
-		WithArgs("b1").
-		WillReturnError(errors.New(queryErrorMessage))
-	mock.ExpectRollback()
-
-	_, err := repo.Get("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestGetQueryAuthorsError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnError(errors.New("authors query error"))
-	mock.ExpectRollback()
-
-	_, err := repo.Get("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestGetCommitError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}))
-	mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
-
-	_, err := repo.Get("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
-
-func TestGetAuthorScanError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	// One column returned, but repository scans two fields.
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id"}).AddRow("a1"))
-	mock.ExpectRollback()
-
-	_, err := repo.Get("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
+func TestGetContract(t *testing.T) {
+	runFetchBookContract(
+		t,
+		queryBookByID,
+		"b1",
+		func(repo *BookPostgresRepository) (*model.Book, error) { return repo.Get("b1") },
+		func(t *testing.T, book *model.Book) {
+			t.Helper()
+			if book.Id != "b1" || len(book.Authors) != 1 {
+				t.Errorf(errUnexpectedBookFmt, book)
+			}
+		},
+	)
 }
 
 // ── GetByName ─────────────────────────────────────────────────────────────────
 
-func TestGetByNameSuccess(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("a1", authorOneName))
-	mock.ExpectCommit()
-
-	book, err := repo.GetByName(bookOneName)
-	if err != nil {
-		t.Fatalf(errUnexpectedFmt, err)
-	}
-	if book.Name != bookOneName {
-		t.Errorf(errUnexpectedBookFmt, book)
-	}
+func TestGetByNameContract(t *testing.T) {
+	runFetchBookContract(
+		t,
+		queryBookByName,
+		bookOneName,
+		func(repo *BookPostgresRepository) (*model.Book, error) { return repo.GetByName(bookOneName) },
+		func(t *testing.T, book *model.Book) {
+			t.Helper()
+			if book.Name != bookOneName {
+				t.Errorf(errUnexpectedBookFmt, book)
+			}
+		},
+	)
 }
 
-func TestGetByNameQueryError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+func runFetchBookContract(
+	t *testing.T,
+	bookQuery string,
+	lookupValue string,
+	fetch func(repo *BookPostgresRepository) (*model.Book, error),
+	assertBook func(t *testing.T, book *model.Book),
+) {
+	t.Helper()
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByName)).
-		WithArgs(bookOneName).
-		WillReturnError(errors.New(queryErrorMessage))
-	mock.ExpectRollback()
+	t.Run("success", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.GetByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
+		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+			WithArgs(lookupValue).
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+			WithArgs("b1").
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("a1", authorOneName))
+		mock.ExpectCommit()
 
-func TestGetByNameBeginError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+		book, err := fetch(repo)
+		if err != nil {
+			t.Fatalf(errUnexpectedFmt, err)
+		}
+		assertBook(t, book)
+	})
 
-	mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
+	t.Run("begin error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.GetByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
+		mock.ExpectBegin().WillReturnError(errors.New(beginErrorMessage))
 
-func TestGetByNameQueryAuthorsError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+		_, err := fetch(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnError(errors.New("authors query error"))
-	mock.ExpectRollback()
+	t.Run("book query error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.GetByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
+		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+			WithArgs(lookupValue).
+			WillReturnError(errors.New(queryErrorMessage))
+		mock.ExpectRollback()
 
-func TestGetByNameAuthorScanError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+		_, err := fetch(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id"}).AddRow("a1"))
-	mock.ExpectRollback()
+	t.Run("authors query error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.GetByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
-}
+		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+			WithArgs(lookupValue).
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+			WithArgs("b1").
+			WillReturnError(errors.New("authors query error"))
+		mock.ExpectRollback()
 
-func TestGetByNameCommitError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+		_, err := fetch(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
 
-	mock.ExpectBegin()
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
-	mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}))
-	mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
+	t.Run("author scan error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.GetByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
+		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+			WithArgs(lookupValue).
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+			WithArgs("b1").
+			WillReturnRows(pgxmock.NewRows([]string{"Id"}).AddRow("a1"))
+		mock.ExpectRollback()
+
+		_, err := fetch(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
+
+	t.Run("commit error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
+
+		mock.ExpectBegin()
+		mock.ExpectQuery(regexp.QuoteMeta(bookQuery)).
+			WithArgs(lookupValue).
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}).AddRow("b1", bookOneName))
+		mock.ExpectQuery(regexp.QuoteMeta(queryBookAuthorsByBookID)).
+			WithArgs("b1").
+			WillReturnRows(pgxmock.NewRows([]string{"Id", "Name"}))
+		mock.ExpectCommit().WillReturnError(errors.New(commitErrorMessage))
+
+		_, err := fetch(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
@@ -511,82 +447,70 @@ func TestUpdateCommitError(t *testing.T) {
 
 // ── ExistsById ────────────────────────────────────────────────────────────────
 
-func TestExistsByIdTrue(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
-
-	exists, err := repo.ExistsById("b1")
-	if err != nil || !exists {
-		t.Errorf("expected true, got %v, %v", exists, err)
-	}
-}
-
-func TestExistsByIdFalse(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByID)).
-		WithArgs("b1").
-		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
-
-	exists, err := repo.ExistsById("b1")
-	if err != nil || exists {
-		t.Errorf("expected false, got %v, %v", exists, err)
-	}
-}
-
-func TestExistsByIdError(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByID)).
-		WithArgs("b1").
-		WillReturnError(errors.New(queryErrorMessage))
-
-	_, err := repo.ExistsById("b1")
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
+func TestExistsByIDContract(t *testing.T) {
+	runExistsContract(
+		t,
+		queryExistsBookByID,
+		"b1",
+		func(repo *BookPostgresRepository) (bool, error) { return repo.ExistsById("b1") },
+	)
 }
 
 // ── ExistsByName ──────────────────────────────────────────────────────────────
 
-func TestExistsByNameTrue(t *testing.T) {
-	repo, mock := newMockRepo(t)
-
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
-
-	exists, err := repo.ExistsByName(bookOneName)
-	if err != nil || !exists {
-		t.Errorf("expected true, got %v, %v", exists, err)
-	}
+func TestExistsByNameContract(t *testing.T) {
+	runExistsContract(
+		t,
+		queryExistsBookByName,
+		bookOneName,
+		func(repo *BookPostgresRepository) (bool, error) { return repo.ExistsByName(bookOneName) },
+	)
 }
 
-func TestExistsByNameFalse(t *testing.T) {
-	repo, mock := newMockRepo(t)
+func runExistsContract(
+	t *testing.T,
+	query string,
+	arg string,
+	existsCheck func(repo *BookPostgresRepository) (bool, error),
+) {
+	t.Helper()
 
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByName)).
-		WithArgs(bookOneName).
-		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+	t.Run("returns true", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	exists, err := repo.ExistsByName(bookOneName)
-	if err != nil || exists {
-		t.Errorf("expected false, got %v, %v", exists, err)
-	}
-}
+		mock.ExpectQuery(regexp.QuoteMeta(query)).
+			WithArgs(arg).
+			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
 
-func TestExistsByNameError(t *testing.T) {
-	repo, mock := newMockRepo(t)
+		exists, err := existsCheck(repo)
+		if err != nil || !exists {
+			t.Errorf("expected true, got %v, %v", exists, err)
+		}
+	})
 
-	mock.ExpectQuery(regexp.QuoteMeta(queryExistsBookByName)).
-		WithArgs(bookOneName).
-		WillReturnError(errors.New(queryErrorMessage))
+	t.Run("returns false", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
 
-	_, err := repo.ExistsByName(bookOneName)
-	if err == nil {
-		t.Fatal(errExpectedErrorNil)
-	}
+		mock.ExpectQuery(regexp.QuoteMeta(query)).
+			WithArgs(arg).
+			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+
+		exists, err := existsCheck(repo)
+		if err != nil || exists {
+			t.Errorf("expected false, got %v, %v", exists, err)
+		}
+	})
+
+	t.Run("returns error", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
+
+		mock.ExpectQuery(regexp.QuoteMeta(query)).
+			WithArgs(arg).
+			WillReturnError(errors.New(queryErrorMessage))
+
+		_, err := existsCheck(repo)
+		if err == nil {
+			t.Fatal(errExpectedErrorNil)
+		}
+	})
 }

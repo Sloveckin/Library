@@ -6,3 +6,4 @@ ansible/inventory.ini
 server/coverage.out
 server/bin/
 devops-key
+key-devops
