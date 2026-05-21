@@ -286,7 +286,7 @@ func TestCreateExistsByNameError(t *testing.T) {
 	_, err := service.Create(testBookName)
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -307,7 +307,7 @@ func TestCreateAuthorServiceError(t *testing.T) {
 	_, err := service.Create(testBookName, model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -331,7 +331,7 @@ func TestCreateRepositoryError(t *testing.T) {
 	_, err := service.Create(testBookName, model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -348,7 +348,7 @@ func TestExistsByIdError(t *testing.T) {
 	_, err := service.ExistsById("1")
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -365,7 +365,7 @@ func TestExistByNameError(t *testing.T) {
 	_, err := service.ExistByName("Test")
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -382,7 +382,7 @@ func TestUpdateExistsByIdError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -402,7 +402,7 @@ func TestUpdateExistsByNameError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -448,7 +448,7 @@ func TestUpdateGetByNameError(t *testing.T) {
 	_, err := service.Update("1", "Updated")
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
 
@@ -499,6 +499,6 @@ func TestUpdateRepositoryError(t *testing.T) {
 	_, err := service.Update("1", "Updated", model.Author{Id: "1"})
 
 	if err == nil {
-		t.Errorf(errExpectedErrorNil)
+		t.Error(errExpectedErrorNil)
 	}
 }
